@@ -1,6 +1,6 @@
 #
 
-<p align="center"><img src="https://github.com/hsp-iit/multi-tactile-6d-estimation/blob/main/assets/scheme.png" alt=""/></p>
+<p align="center"><img src="https://user-images.githubusercontent.com/49904924/235861528-2cd16f61-2b4f-4764-a805-b22a1541f478.png" | width =600 alt=""/></p>
 
 
 <h4 align="center">
