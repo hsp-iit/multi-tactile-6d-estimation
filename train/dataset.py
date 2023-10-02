@@ -1,11 +1,10 @@
 from PIL import Image
 from torch.utils.data import Dataset
 import torchvision
-import torch
 
 class DatasetSimulationImages(Dataset): 
     """
-    Class of a CNN-based encoder.
+    Custom dataset for the tactile simulated images.
     '''
 
     Attributes

@@ -108,3 +108,4 @@ class Encoder(nn.Module):
         x = self.flatten(x)
         
         return self.fc(x)
+    

@@ -1,15 +1,8 @@
-"""
-This script must be launched setting CUBLAS_WORKSPACE_CONFIG environment variable:
-
-CUBLAS_WORKSPACE_CONFIG=:4096:8 python main.py path_config
-"""
-
 import configparser
-import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import torch
 import glob
+import sys
 import torchvision
 
 from encoder import Encoder
@@ -18,7 +11,7 @@ from dataset import DatasetSimulationImages
 from tqdm import tqdm
 from torch.utils.data import DataLoader, random_split
 
-# Reproducible trainings only
+# Make sure the training is reproducible 
 torch.manual_seed(0)
 torch.use_deterministic_algorithms(True)
 np.random.seed(0)
@@ -27,7 +20,8 @@ g.manual_seed(0)
 
 # Parse the config.ini file
 config = configparser.ConfigParser()
-config.read('config.ini')
+config_file = sys.argv[1]
+config.read(config_file)
 paths = config['Paths']
 normalization = config['Normalization']
 hyperparameters = config['Hyperparameters']
@@ -119,7 +113,6 @@ def train_epoch(encoder, decoder, device, dataloader, optimizer):
     encoder.train()
     decoder.train()
     train_loss = []
-    counter = 0
     for i, image_batch in enumerate(tqdm(dataloader)):
         # Move tensor to the proper device, encode and decode the data
         image_batch = image_batch.to(device)
@@ -139,12 +132,8 @@ def train_epoch(encoder, decoder, device, dataloader, optimizer):
         # Update the parameters.
         optimizer.step()
 
-        # Print batch loss.
-        # print('\t partial train loss (single batch): %f' % (loss.data))
-
         train_loss.append(loss.detach().cpu().numpy())
         
-        counter += 1
 
     return np.mean(train_loss)
 
@@ -198,6 +187,3 @@ for epoch in range(num_epochs):
     if epoch % 4 == 0:
         torch.save({"model_state_dict_encoder": encoder.state_dict(), "model_state_dict_decoder": decoder.state_dict()},
                    model_name + str(epoch) + '.pth')
-
-
-

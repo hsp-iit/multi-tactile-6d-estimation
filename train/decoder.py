@@ -53,7 +53,7 @@ class Decoder(nn.Module):
         latent_size : int
             size of the latent space
         filters : tuple
-            number of kernels
+            number of filters
         conv : tuple
             kernel sizes
         stride : tuple
@@ -128,3 +128,4 @@ class Decoder(nn.Module):
         x = self.deconvs[-1](x)
 
         return torch.nn.LeakyReLU()(x)
+    
