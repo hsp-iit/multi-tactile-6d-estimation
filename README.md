@@ -27,6 +27,7 @@
 ## :new: Updates
 
 2023-10-02 - Add the training code
+
 2023-10-04 - Update the `README.md`
 
 ## :gear: Installation
