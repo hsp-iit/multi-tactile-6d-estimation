@@ -1,5 +1,5 @@
 <h1 align="center">
-    Object Pose Estimation using Multiple Vision-based Tactile Sensor
+    Object pose estimation <br> using multiple vision-based tactile sensors
 </h1>
 
 <p align="center"><img src="https://user-images.githubusercontent.com/49904924/235861528-2cd16f61-2b4f-4764-a805-b22a1541f478.png" | width =600 alt=""/></p>
