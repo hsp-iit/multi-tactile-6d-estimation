@@ -26,7 +26,7 @@
 
 ## :new: Updates
 
-2023-10-02 - Add the training code
+2023-10-02 - Add the training code in the [train](train) folder
 
 2023-10-04 - Update the `README.md`
 
