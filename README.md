@@ -30,6 +30,8 @@
 
 2023-10-04 - Update the `README.md`
 
+2023-10-04 - Add the optimization code in the [optimization](optimization) folder
+
 ## :gear: Installation
 
 ### Requirements
