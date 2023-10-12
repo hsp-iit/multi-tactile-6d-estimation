@@ -20,7 +20,7 @@ random.seed(0)
 def generate_indexes(indexes_list:list) -> np.array:
     """
     Generate a numpy array with the indexes of the cartesian product between numpy arrays.
-    
+
     Args:
         indexes_list (list): list of arrays .containing the indexes of the points of the point cloud selected for every sensor
 
@@ -28,7 +28,7 @@ def generate_indexes(indexes_list:list) -> np.array:
         np.array
 
     """
-    
+
     meshgrid = np.meshgrid(*indexes_list, indexing='ij')
     coordinate_grid = np.array((meshgrid), dtype=np.int16)
     total_number = np.prod([index.shape[0] for index in indexes_list])
@@ -50,7 +50,6 @@ def save_points_as_off(points: np.array, name: str) -> None:
         out.write(str(points.shape[1]) + ' 0 0\r\n')
         for i in range(points.shape[1]):
             out.write(str(points[0, i]) + ' ' + str(points[1, i]) + ' ' + str(points[2, i]) + ' \r\n')
-
 
 def save_pose(points: np.array, twist: np.array, name: str) -> None:
     """
@@ -86,8 +85,9 @@ def main():
     data = np.loadtxt(config['Files']['poses_images'])
     points = data[:, :3].T
 
-    # Save the ground truth pose. In our setup was fixed
-    save_pose(points, np.array([0.1, 0.0, 0.2, 0.0, 0.0, 0.0]), './real_pose.off')
+    # Load the gain parameters of the optimizer
+    rot_gain = float(config['Files']['rot_gain'])
+    pos_gain = float(config['Files']['pos_gain'])
 
     # Load the pose of the sensors.
     poses_sensors = np.loadtxt(config['Files']['poses_sensors'], skiprows = 2)
@@ -97,42 +97,42 @@ def main():
     for i in range(tactile_based_selector.number_of_sensors):
         landmarks[:, i] = poses_sensors[i,:3]
 
-    # Save the position of contact of the sensors for visualization purpose.
-    save_points_as_off(landmarks, './landmarks.off')
-
-
     # Distance-based selection method
-    def eval_triplet(item: jnp.array, points: np.array, landmarks: np.array, comb: tuple, threshold: float=0.005)-> jnp.bool:
+    def eval_tuple(ntuple: jnp.array, points: np.array, landmarks: np.array, comb: tuple, threshold: float=0.005)-> jnp.bool_:
         """
-        Evaluate the triplet based on the proprioception and return True if the average error is under a certain threshold.
+        Evaluate the n-tuple of sensors depending on the actual position of the sensors given by the proprioception.
+        Return true if the n-tuple is valid, i.e. the distance between the sensors in the n-tuple is compatible with that of
+        the sensors as given by the proprioception, false otherwise.
 
         Args:
-            item (jnp.array): the triplet under study
-            points (np.array): array of points
-            landmarks (np.array): positions of the sensors
-            comb (tuple): tuple with combinations of the n sensors
-            threshold (float, optional): threshold not to be passed by the triplet to be accepted. Defaults to 0.005.
+            ntuple (jnp.array): the n-tuple containing the indexes to be used to access the array of points and obtain the
+            corresponding 3D Cartesian position of the sensor
+            points (np.array): array of all points, each to be considered as the Cartesian position of one sensor
+            landmarks (np.array): positions of the sensors from the proprioception
+            comb (tuple): tuple with all possible connections between N sensors
+                For example: for three sensors ((0, 1), (0, 2), (1, 2))
+            threshold (float, optional): it decides if the n-tuple is accepted or not by comparing the difference between the
+                mutual landmarks distance and the mutual points distance averaged across all combinations in comb
 
         Returns:
             jnp.bool
         """
-        
+
         list_errors = []
 
         for combination in comb:
             distance_landmarks = jnp.linalg.norm(landmarks[:, combination[0]] - landmarks[:, combination[1]])
-            distance_points = jnp.linalg.norm(points[:, item[combination[0]]] - points[:, item[combination[1]]])
+            distance_points = jnp.linalg.norm(points[:, ntuple[combination[0]]] - points[:, ntuple[combination[1]]])
             list_errors.append(abs(distance_points - distance_landmarks))
         error = sum(list_errors)/len(list_errors)
 
         return jnp.bool_((jnp.heaviside(jnp.min(jnp.array([threshold - error, 0.0])), 1.0)))
 
     # Distance-based selection method jax implementation
-    def eval_triplets(indexes: jnp.array, points: np.array, landmarks: np.array, comb: tuple, threshold: float=0.005)-> jnp.array:
-        return vmap(eval_triplet, in_axes = (1, None, None, None, None))(indexes, points, landmarks, comb, threshold)
+    def eval_ntuples(indexes: jnp.array, points: np.array, landmarks: np.array, comb: tuple, threshold: float=0.005)-> jnp.array:
+        return vmap(eval_tuple, in_axes = (1, None, None, None, None))(indexes, points, landmarks, comb, threshold)
 
-
-    eval_triplets = jit(eval_triplets)
+    eval_ntuples = jit(eval_ntuples)
 
     # Define the starting distance threshold
     distance_threshold = 0.005
@@ -140,7 +140,8 @@ def main():
     # Initialize array to store the filtered tuples
     filter_total = np.empty((tactile_based_selector.number_of_sensors, 0), dtype=np.int16)
 
-    # Store the possible combinatory combinations between sensors
+    # Evaluate all the possible combinations of N sensors
+    # For example: for three sensors ((0, 1), (0, 2), (1, 2))
     comb_list = list(combinations(np.arange(tactile_based_selector.number_of_sensors), 2))
 
     # Check whether the code can be simplified in case of one or two sensors
@@ -171,12 +172,12 @@ def main():
             loop_bool = False
 
         if loop_bool:
-            # Loop to filter all the triplets
+            # Loop to filter all the ntuples
             for i in range(loop_range):
                 indexes = generate_indexes(list(np.array([tactile_based_selector.indexes_list[0][i * step : (i+1) * step]])) + tactile_based_selector.indexes_list[1:])
                 indexes = jnp.array(indexes)
 
-                filtered = eval_triplets(indexes, points, landmarks, tactile_based_selector.number_of_sensors, comb_list, distance_threshold)
+                filtered = eval_ntuples(indexes, points, landmarks, comb_list, distance_threshold)
 
                 filtered_indexes = indexes[:, filtered]
 
@@ -189,7 +190,7 @@ def main():
                 indexes = generate_indexes(list(np.array([tactile_based_selector.indexes_list[0][loop_range* step :]])) + tactile_based_selector.indexes_list[1:])
                 indexes = jnp.array(indexes)
 
-                filtered = eval_triplets(indexes, points, landmarks, tactile_based_selector.number_of_sensors, comb_list, distance_threshold)
+                filtered = eval_ntuples(indexes, points, landmarks, comb_list, distance_threshold)
 
                 filtered_indexes = indexes[:, filtered]
 
@@ -198,13 +199,13 @@ def main():
                 filtered_indexes = None
                 indexes = None
                 filtered = None
-        
+
         # Generate all the indexes all at once
         else:
             indexes = generate_indexes(tactile_based_selector.indexes_list)
             indexes = jnp.array(indexes)
 
-            filtered = eval_triplets(indexes, points, landmarks, tactile_based_selector.number_of_sensors, comb_list, distance_threshold)
+            filtered = eval_ntuples(indexes, points, landmarks, comb_list, distance_threshold)
 
             filtered_indexes = indexes[:, filtered]
             filter_total = np.append(filter_total, np.array(filtered_indexes), 1)
@@ -212,45 +213,100 @@ def main():
             indexes = None
             filtered = None
 
-    indexes = filter_total
-    points = jnp.array(points)
-    landmarks = jnp.array(landmarks)
+        indexes = filter_total
+        points = jnp.array(points)
+        landmarks = jnp.array(landmarks)
 
     boolean_loop = False
-    boolean_triplets = True
+    boolean_ntuples = True
 
     if tactile_based_selector.number_of_sensors != 0:
 
-        # Check whether the number of triplets to be studied is appropriate
-        while boolean_triplets:
+        # Check whether the number of ntuples to be studied is appropriate
+        while boolean_ntuples:
 
-            filter = eval_triplets(indexes, points, landmarks, tactile_based_selector.number_of_sensors, comb_list, distance_threshold)
-
+            filter = eval_ntuples(indexes, points, landmarks, comb_list, distance_threshold)
 
             filtered_indexes = indexes[:, filter]
             print(filtered_indexes.shape)
 
+            # Check if we have a sufficient number of ntuples to consider
             if filtered_indexes.shape[1] < 5000 and filtered_indexes.shape[1] >0:
-                boolean_triplets = False
+                boolean_ntuples = False
 
+            # Check whether we already increased the distance threshold even if the number of ntuples is high
             elif filtered_indexes.shape[1] > 5000 and boolean_loop:
-                boolean_triplets = False
+                boolean_ntuples = False
 
+            # Check whether we set a distance threshold too low
             elif filtered_indexes.shape[1] == 0:
                 distance_threshold += 0.0001
                 boolean_loop = True
                 filter = None
+            # Decrease the distance threshold
             else:
                 distance_threshold -= 0.0005
                 filtered_indexes = None
     else:
         filtered_indexes = indexes
 
-    filtered_indexes = jnp.array(filtered_indexes)
     print("Remaining indexes shape: ")
     print(filtered_indexes.shape)
 
-    # Loss
+    num_poses = filtered_indexes.shape[1]
+
+    # Define the iteration of the optimization process.
+    iters = 700
+
+    # Initialize the centroid
+    x0 = np.average(landmarks[0, :])
+    y0 = np.average(landmarks[1, :])
+    z0 = np.average(landmarks[2, :])
+
+    # Time benchmarking
+    start_time = time.time()
+    q = Quaternion.Quaternion(axis=[1, 0, 0], angle=0)
+
+    pose = np.concatenate((np.array([x0, y0, z0]), q.axis * q.angle), axis=0)
+
+    twists = np.repeat(np.expand_dims(pose, 1), num_poses, axis=1)
+
+    # Generate as many random rotations as the number of ntuples under consideration
+    for i in range(num_poses):
+
+        q = Quaternion.Quaternion(matrix = special_ortho_group.rvs(3))
+
+        twists[0:3, i] = np.array([x0, y0, z0])
+        twists[3:6, i] = q.axis * q.angle
+
+    print("Time required to initialize the poses:")
+    print(time.time() - start_time)
+
+    # For each given orientation, consider alternatives for the initial position around the centroid.
+    directions = np.array([[0, 0, 0], [1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1], [1, 1, 1], [-1, -1, -1], [1, -1, 1], [1, -1, -1], [1, 1, -1], [-1, -1, 1],[-1, 1, 1], [-1, 1, -1]])
+
+    # Use the following scaler to shift the positions along the above define directions
+    position_scalar = 0.2
+
+    # Initialize the total arrays
+    twists_total = np.empty((6,0))
+    filtered_indexes_total = np.empty((3,0))
+
+    for position in range(directions.shape[0]):
+        twists_copy = copy.deepcopy(twists)
+        twists_copy[0] += directions[position][0] * position_scalar
+        twists_copy[1] += directions[position][1] * position_scalar
+        twists_copy[2] += directions[position][2] * position_scalar
+
+        filtered_indexes_total = np.concatenate((filtered_indexes_total,filtered_indexes), axis=1)
+        twists_total = np.concatenate((twists_total, twists_copy), axis=1)
+        
+    twists_total = jnp.array(twists_total)
+    filtered_indexes_total = jnp.array(filtered_indexes_total.astype('int32'))
+
+
+    # We calculate the loss based on the distance between the candidate ntuple
+    # transformed with the actual twist and the position of the sensors
     def eval_item(item, points, landmarks, twist):
         T = SO3.exp(twist[3:6]).as_matrix()
         error = 0
@@ -263,89 +319,40 @@ def main():
         return eval_item(filtered_index, points, landmarks, twist)
 
     def eval_items_final(twists):
-        return vmap(eval_items, in_axes=(1,1))(twists, filtered_indexes)
+        return vmap(eval_items, in_axes=(1,1))(twists, filtered_indexes_total)
 
     g = grad(eval_items)
 
+    # The in_axes option selects on which axis we should parallelize the vectors
     def grads(twists):
-        return vmap(g, in_axes=(1,1))(twists, filtered_indexes)
+        return vmap(g, in_axes=(1,1))(twists, filtered_indexes_total)
 
     grads = jit(grads)
 
-    # Define the iteration of the optimization process.
-    # 700 represent an heuristic solution
-    iters = 700
 
-    # Initialize the centroid
-    x0 = np.average(landmarks[0, :])
-    y0 = np.average(landmarks[1, :])
-    z0 = np.average(landmarks[2, :])
+    # Gradient descent tuning
+    K = np.eye(6)
+    K[0:3, 0:3] *= pos_gain
+    K[3:6, 3:6] *= rot_gain
+    K = jnp.array(K)
 
-    # Save the time to understand how much time we need to generate the random poses
-    start_time = time.time()
-    q = Quaternion.Quaternion(axis=[1, 0, 0], angle=0)
+    for i in tqdm(range(iters)):
 
-    pose = np.concatenate((np.array([x0, y0, z0]), q.axis * q.angle), axis=0)
+        variable = grads(twists_total).T
 
+        # Optimize
+        twists_total = twists_total - K @ variable
 
-    twists = np.repeat(np.expand_dims(pose, 1), filtered_indexes.shape[1], axis=1)
+    errors_total = eval_items_final(twists_total)
 
-    # Generate as many random rotations as the number of triplets under consideration
-    for i in range(filtered_indexes.shape[1]):
+    # Save the the final poses, the associated errors and the associated indexes of the point cloud
+    np.savez('arrays.npz', twists=twists_total.T, errors=errors_total, indexes=filtered_indexes_total.T)
 
-        q = Quaternion.Quaternion(matrix = special_ortho_group.rvs(3))
+    # Save the ground truth pose. In our setup was fixed
+    save_pose(points, np.array([0.1, 0.0, 0.2, 0.0, 0.0, 0.0]), './real_pose.off')
 
-        twists[0:3, i] = np.array([x0, y0, z0])
-        twists[3:6, i] = q.axis * q.angle
-
-    print("Time to generate poses: ")
-    print(time.time() - start_time)
-
-    # Consider all around positions for the poses since the precision of the GD can depend on the starting pose.
-    positions = np.array([[0, 0, 0], [1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1], [1, 1, 1], [-1, -1, -1], [1, -1, 1], [1, -1, -1], [1, 1, -1], [-1, -1, 1],[-1, 1, 1], [-1, 1, -1]])
-
-    # Multiply the positions of a quantity which is greater than the bigger half dimension of the object considered.
-    # Chose 0.2, which is greater than the half of biggest object considered
-    position_multiplier = 0.2
-
-    for position in range(positions.shape[0]):
-
-        # Move the poses on the position set
-        twists_copy = copy.deepcopy(twists)
-        twists_copy[0] += positions[position][0] * position_multiplier
-        twists_copy[1] += positions[position][1] * position_multiplier
-        twists_copy[2] += positions[position][2] * position_multiplier
-        twists_copy = jnp.array(twists_copy)
-
-        # Gradient descent tuning
-        K = np.eye(6)
-        K[0:3, 0:3] *= 0.01
-        K[3:6, 3:6] *= 1.0
-        K = jnp.array(K)
-
-        for i in tqdm(range(iters)):
-
-            variable = grads(twists_copy).T
-
-            # Optimize
-            twists_copy = twists_copy - K @ variable
-
-        errors = eval_items_final(twists_copy)
-
-        errors = np.array(errors)
-
-        f = open("rotations_best"+str(position)+".txt", "w")
-        f.close()
-        f = open("errors_best" + str(position) + ".txt", "w")
-        f.close()
-        f = open("filtered_indexes" + str(position) + ".txt", "w")
-        f.close()
-
-
-        np.savetxt("rotations_best"+str(position)+".txt", twists_copy.T)
-        np.savetxt("errors_best" + str(position) + ".txt", errors)
-        np.savetxt("filtered_indexes" + str(position) + ".txt", filtered_indexes.T)
-
+    # Save the position of contact of the sensors for visualization purpose.
+    save_points_as_off(landmarks, './landmarks.off')
 
 if __name__ == '__main__':
     main()

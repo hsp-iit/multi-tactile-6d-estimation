@@ -10,8 +10,8 @@ from train.decoder import Decoder
 
 class TactileBasedSelector():
     """
-    A class to hadle the tactile-based selection of the points.
-    
+    A class to handle the tactile-based selection of the points.
+
 
     Attributes
     ----------
@@ -48,9 +48,9 @@ class TactileBasedSelector():
         Calculate the remaining indexes.
     calcuate_database():
         Calculate the off-line database of the images w.r.t. the background.
-    
+
     """
-    
+
     def __init__(self, config_file_path : str)-> None:
         """
         Constructor
@@ -58,7 +58,7 @@ class TactileBasedSelector():
         Args:
             config_file_path (str): _description_
         """
-        
+
         # Set the path to the folder containing the images
         config = configparser.ConfigParser()
         config.read(config_file_path)
@@ -68,7 +68,9 @@ class TactileBasedSelector():
         eliminate_points = config['EliminatePoints']
         self.angles_database = eliminate_points['angles_database']
         self.images_point_cloud = eliminate_points['images_point_cloud']
-        # Assign the useful values
+        self.threshold = float(eliminate_points['threshold'])
+
+        # Assign some useful values
         normalization_bool = autoencoder['normalization_bool']
         mean = eval(autoencoder['mean'])
         std = eval(autoencoder['std'])
@@ -81,9 +83,8 @@ class TactileBasedSelector():
             self.transforms = torchvision.transforms.Compose([torchvision.transforms.Normalize(mean, std)])
 
         # Initialize the encoded space
-
-        self.encoder = Encoder(image_size_W=240, image_size_H=320, latent_size=encoded_space)
-        self.decoder = Decoder(image_size_W=240, image_size_H=320, latent_size=encoded_space)
+        self.encoder = Encoder(image_size_w=240, image_size_h=320, latent_size=encoded_space)
+        self.decoder = Decoder(image_size_w=240, image_size_h=320, latent_size=encoded_space)
 
         self.device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
         print(f'Selected device: {self.device}')
@@ -110,10 +111,10 @@ class TactileBasedSelector():
         self.indexes_list = []
 
         with torch.no_grad():
-            
+
             # Calculate the latent vector of the background
             self.latent_vector_background = self.encoder(background.unsqueeze(0))
-            
+
             # Calculte the angles of the inference images
             for i in range(self.number_of_sensors):
                 comparison_image = torchvision.transforms.ToTensor()(Image.open(eliminate_points['image_sensor_'+str(i+1)]))
@@ -121,7 +122,6 @@ class TactileBasedSelector():
                 comparison_vector = self.encoder(comparison_image.unsqueeze(0))
                 angle_comparison_vector = torch.acos(torch.matmul(self.latent_vector_background, torch.t(comparison_vector))
                                / (torch.linalg.norm(self.latent_vector_background)*torch.linalg.norm(comparison_vector))).item()
-                print(angle_comparison_vector)
                 self.angles_comparison_vectors.append(angle_comparison_vector)
                 self.point_clouds_array.append(np.empty((0, 6)))
                 self.indexes_list.append(np.empty((0,1)))
@@ -138,23 +138,9 @@ class TactileBasedSelector():
         for i in range(self.poses_array.shape[0]):
             for j in range(self.number_of_sensors):
 
-                if abs(self.angles_comparison_vectors[j] - angles[i]) < 0.04:
+                if abs(self.angles_comparison_vectors[j] - angles[i]) < self.threshold:
                     self.point_clouds_array[j] = np.append(self.point_clouds_array[j], np.array([self.poses_array[i]]), 0)
                     self.indexes_list[j] = np.append(self.indexes_list[j], np.array([[i]]), 0)
-
-        # Save the partial point cloud for visualization purpose
-        for j in range(self.number_of_sensors):
-
-            f = open("heatmap" + str(j+1) + ".off", 'w')
-            f.write("COFF\n")
-            f.write(str(self.point_clouds_array[j].shape[0]) + " " + str(0) + " " + str(0) + "\n")
-            f.close()
-
-
-            for i in range(self.point_clouds_array[j].shape[0]):
-                f = open("heatmap"+str(j+1)+".off", "a")
-                f.write(str(self.point_clouds_array[j][i][0]) + " " + str(self.point_clouds_array[j][i][1]) + " " + str(self.point_clouds_array[j][i][2]) + " " + str(1.0) + " " + str(0.0) + " " + str(0.0) + " " + str(1.) + "\n")
-
 
     def calculate_database(self) -> None:
         """
@@ -178,10 +164,24 @@ class TactileBasedSelector():
         angles = np.array(angles)
         np.savetxt(self.angles_database, angles)
 
+    def save_off(self):
+        """
+        Save the partial point cloud for visualization purpose
+        """
+        for j in range(self.number_of_sensors):
+
+            f = open("heatmap" + str(j+1) + ".off", 'w')
+            f.write("COFF\n")
+            f.write(str(self.point_clouds_array[j].shape[0]) + " " + str(0) + " " + str(0) + "\n")
+            f.close()
+
+            for i in range(self.point_clouds_array[j].shape[0]):
+                f = open("heatmap"+str(j+1)+".off", "a")
+                f.write(str(self.point_clouds_array[j][i][0]) + " " + str(self.point_clouds_array[j][i][1]) + " " + str(self.point_clouds_array[j][i][2]) + " " + str(1.0) + " " + str(0.0) + " " + str(0.0) + " " + str(1.) + "\n")
 
 
 if __name__ == '__main__':
-    
+
     config_file = sys.argv[1]
     init = TactileBasedSelector(config_file)
 
