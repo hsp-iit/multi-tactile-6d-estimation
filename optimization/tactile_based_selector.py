@@ -45,7 +45,7 @@ class TactileBasedSelector():
     Methods
     ------
     calculate_indexes():
-        Calculate the remaining indexes.
+        Calculate the remaining indexes after the latent vectors comparison.
     calcuate_database():
         Calculate the off-line database of the images w.r.t. the background.
 
@@ -65,13 +65,13 @@ class TactileBasedSelector():
 
         # Parse the file
         autoencoder = config['Autoencoder']
-        eliminate_points = config['EliminatePoints']
-        self.angles_database = eliminate_points['angles_database']
-        self.images_point_cloud = eliminate_points['images_point_cloud']
-        self.threshold = float(eliminate_points['threshold'])
+        parameters = config['Parameters']
+        self.angles_database = parameters['angles_database']
+        self.images_point_cloud = parameters['images_point_cloud']
+        self.threshold = float(parameters['threshold'])
 
         # Assign some useful values
-        normalization_bool = autoencoder['normalization_bool']
+        enable_normalization = autoencoder['enable_normalization']
         mean = eval(autoencoder['mean'])
         std = eval(autoencoder['std'])
 
@@ -79,7 +79,7 @@ class TactileBasedSelector():
 
         # Set the necessary transforms for the datasets
         self.transforms = None
-        if normalization_bool == 'True':
+        if enable_normalization == 'True':
             self.transforms = torchvision.transforms.Compose([torchvision.transforms.Normalize(mean, std)])
 
         # Initialize the encoded space
@@ -101,8 +101,8 @@ class TactileBasedSelector():
         self.decoder.load_state_dict(model['model_state_dict_decoder'])
 
         # Load the point cloud of the object
-        self.poses_array = np.loadtxt(eliminate_points['point_cloud_file'])
-        self.number_of_sensors = int(eliminate_points['number_of_sensors'])
+        self.poses_array = np.loadtxt(parameters['point_cloud_file'])
+        self.number_of_sensors = int(parameters['number_of_sensors'])
         background = torchvision.transforms.ToTensor()(Image.open(autoencoder['background']))
         background = self.transforms(background)
         background = background.to(self.device)
@@ -117,7 +117,7 @@ class TactileBasedSelector():
 
             # Calculte the angles of the inference images
             for i in range(self.number_of_sensors):
-                comparison_image = torchvision.transforms.ToTensor()(Image.open(eliminate_points['image_sensor_'+str(i+1)]))
+                comparison_image = torchvision.transforms.ToTensor()(Image.open(parameters['image_sensor_'+str(i+1)]))
                 comparison_image = self.transforms(comparison_image)
                 comparison_vector = self.encoder(comparison_image.unsqueeze(0))
                 angle_comparison_vector = torch.acos(torch.matmul(self.latent_vector_background, torch.t(comparison_vector))
@@ -129,7 +129,7 @@ class TactileBasedSelector():
 
     def calculate_indexes(self) -> None:
         """
-        Calculate the remaining indexes
+        Calculate the remaining indexes after the latent vectors comparison.
         """
 
         angles = np.loadtxt(self.angles_database)
@@ -144,7 +144,7 @@ class TactileBasedSelector():
 
     def calculate_database(self) -> None:
         """
-        Calculate the off-line database of the images w.r.t. the background
+        Calculate the off-line database of the images w.r.t. the background.
         """
 
         angles = []
@@ -166,7 +166,7 @@ class TactileBasedSelector():
 
     def save_off(self):
         """
-        Save the partial point cloud for visualization purpose
+        Save the partial point cloud for visualization purpose.
         """
         for j in range(self.number_of_sensors):
 

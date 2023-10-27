@@ -55,15 +55,6 @@ def main():
     # Sort the errors
     ordered = np.argsort(np.array(sum_errors))
 
-    np.savetxt("all_rotations.txt", np.array(total_poses))
-    np.savetxt("sum_errors.txt", np.array(sum_errors))
-    np.savetxt("position_errors.txt", np.array(position_errors))
-    np.savetxt("rotation_errors.txt", np.array(pose_errors))
-    np.savetxt("ordered_poses.txt", np.array(ordered))
-    np.savetxt("depths_all.txt", np.array(depths_all))
-    np.savetxt("errors_all.txt", np.array(errors_all))
-    np.savetxt("total_filtered_indexes.txt", np.array(filtered_indexes))
-
     np.savez('final_results.npz', total_poses=np.array(total_poses), sum_errors=np.array(sum_errors), position_errors=np.array(position_errors),
              pose_errors=np.array(pose_errors), ordered_poses=np.array(ordered), all_depths=np.array(depths_all), all_errors=np.array(errors_all))
 

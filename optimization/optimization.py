@@ -228,6 +228,8 @@ def main():
             filter = eval_ntuples(indexes, points, landmarks, comb_list, distance_threshold)
 
             filtered_indexes = indexes[:, filter]
+            
+            # Print the actual number of tuples
             print(filtered_indexes.shape)
 
             # Check if we have a sufficient number of ntuples to consider
@@ -250,6 +252,7 @@ def main():
     else:
         filtered_indexes = indexes
 
+    # Print the final number of tuples
     print("Remaining indexes shape: ")
     print(filtered_indexes.shape)
 
