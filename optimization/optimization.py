@@ -98,7 +98,7 @@ def main():
         landmarks[:, i] = poses_sensors[i,:3]
 
     # Distance-based selection method
-    def eval_tuple(ntuple: jnp.array, points: np.array, landmarks: np.array, comb: tuple, threshold: float=0.005)-> jnp.bool_:
+    def eval_tuple(ntuple: jnp.array, points: np.array, landmarks: np.array, comb: tuple, threshold: float)-> jnp.bool_:
         """
         Evaluate the n-tuple of sensors depending on the actual position of the sensors given by the proprioception.
         Return true if the n-tuple is valid, i.e. the distance between the sensors in the n-tuple is compatible with that of
@@ -129,7 +129,7 @@ def main():
         return jnp.bool_((jnp.heaviside(jnp.min(jnp.array([threshold - error, 0.0])), 1.0)))
 
     # Distance-based selection method jax implementation
-    def eval_ntuples(indexes: jnp.array, points: np.array, landmarks: np.array, comb: tuple, threshold: float=0.005)-> jnp.array:
+    def eval_ntuples(indexes: jnp.array, points: np.array, landmarks: np.array, comb: tuple, threshold: float)-> jnp.array:
         return vmap(eval_tuple, in_axes = (1, None, None, None, None))(indexes, points, landmarks, comb, threshold)
 
     eval_ntuples = jit(eval_ntuples)
