@@ -55,8 +55,10 @@ def main():
     # Sort the errors
     ordered = np.argsort(np.array(sum_errors))
 
-    np.savez('final_results.npz', total_poses=np.array(total_poses), sum_errors=np.array(sum_errors), position_errors=np.array(position_errors),
-             pose_errors=np.array(pose_errors), ordered_poses=np.array(ordered), all_depths=np.array(depths_all), all_errors=np.array(errors_all))
+    np.savez('final_results.npz', total_poses=np.array(total_poses), 
+             sum_errors=np.array(sum_errors), position_errors=np.array(position_errors),
+             pose_errors=np.array(pose_errors), ordered_poses=np.array(ordered), 
+             all_depths=np.array(depths_all), all_errors=np.array(errors_all))
 
 if __name__ == '__main__':
 

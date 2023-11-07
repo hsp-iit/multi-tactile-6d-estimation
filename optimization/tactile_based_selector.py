@@ -1,3 +1,4 @@
+import copy
 import configparser
 import numpy as np
 import sys
@@ -80,7 +81,8 @@ class TactileBasedSelector():
         # Set the necessary transforms for the datasets
         self.transforms = None
         if enable_normalization == 'True':
-            self.transforms = torchvision.transforms.Compose([torchvision.transforms.Normalize(mean, std)])
+            self.transforms = torchvision.transforms.Compose(
+                [torchvision.transforms.Normalize(mean, std)])
 
         # Initialize the encoded space
         self.encoder = Encoder(image_size_w=240, image_size_h=320, latent_size=encoded_space)
@@ -117,17 +119,20 @@ class TactileBasedSelector():
 
             # Calculte the angles of the inference images
             for i in range(self.number_of_sensors):
-                comparison_image = torchvision.transforms.ToTensor()(Image.open(parameters['image_sensor_'+str(i+1)]))
+                comparison_image = torchvision.transforms.ToTensor()(Image.open(
+                    parameters['image_sensor_'+str(i+1)]))
                 comparison_image = self.transforms(comparison_image)
                 comparison_vector = self.encoder(comparison_image.unsqueeze(0))
-                angle_comparison_vector = torch.acos(torch.matmul(self.latent_vector_background, torch.t(comparison_vector))
-                               / (torch.linalg.norm(self.latent_vector_background)*torch.linalg.norm(comparison_vector))).item()
+                angle_comparison_vector = torch.acos(torch.matmul(
+                    self.latent_vector_background, torch.t(comparison_vector))
+                               / (torch.linalg.norm(self.latent_vector_background)
+                                  * torch.linalg.norm(comparison_vector))).item()
                 self.angles_comparison_vectors.append(angle_comparison_vector)
                 self.point_clouds_array.append(np.empty((0, 6)))
                 self.indexes_list.append(np.empty((0,1)))
 
 
-    def calculate_indexes(self) -> None:
+    def calculate_indexes(self, enable_selection: bool= True) -> None:
         """
         Calculate the remaining indexes after the latent vectors comparison.
         """
@@ -135,12 +140,18 @@ class TactileBasedSelector():
         angles = np.loadtxt(self.angles_database)
 
         # Save the indexes
-        for i in range(self.poses_array.shape[0]):
-            for j in range(self.number_of_sensors):
+        if enable_selection:
+            for i in range(self.poses_array.shape[0]):
+                for j in range(self.number_of_sensors):
 
-                if abs(self.angles_comparison_vectors[j] - angles[i]) < self.threshold:
-                    self.point_clouds_array[j] = np.append(self.point_clouds_array[j], np.array([self.poses_array[i]]), 0)
-                    self.indexes_list[j] = np.append(self.indexes_list[j], np.array([[i]]), 0)
+                    if abs(self.angles_comparison_vectors[j] - angles[i]) < self.threshold:
+                        self.point_clouds_array[j] = np.append(self.point_clouds_array[j], 
+                                                               np.array([self.poses_array[i]]), 0)
+                        self.indexes_list[j] = np.append(self.indexes_list[j], np.array([[i]]), 0)
+        else:
+            print('baseline')
+            for j in range(self.number_of_sensors):
+                self.indexes_list[j] = np.arange(self.poses_array.shape[0])
 
     def calculate_database(self) -> None:
         """
@@ -149,7 +160,8 @@ class TactileBasedSelector():
 
         angles = []
         for i in range(self.poses_array.shape[0]):
-            image = torchvision.transforms.ToTensor()(Image.open(self.images_point_cloud + "Image_heatmap_" + str(i) + ".png"))
+            image = torchvision.transforms.ToTensor()(Image.open(
+                self.images_point_cloud + "Image_heatmap_" + str(i) + ".png"))
             if self.transforms is not None:
                 image = self.transforms(image)
 
@@ -158,7 +170,8 @@ class TactileBasedSelector():
             with torch.no_grad():
                 latent_vector = self.encoder(image.unsqueeze(0).to(self.device))
             angle = torch.acos(torch.matmul(self.latent_vector_background, torch.t(latent_vector))
-                               / (torch.linalg.norm(self.latent_vector_background)*torch.linalg.norm(latent_vector))).item()
+                               / (torch.linalg.norm(self.latent_vector_background)
+                                  *torch.linalg.norm(latent_vector))).item()
 
             angles.append(angle)
         angles = np.array(angles)
@@ -177,7 +190,10 @@ class TactileBasedSelector():
 
             for i in range(self.point_clouds_array[j].shape[0]):
                 f = open("heatmap"+str(j+1)+".off", "a")
-                f.write(str(self.point_clouds_array[j][i][0]) + " " + str(self.point_clouds_array[j][i][1]) + " " + str(self.point_clouds_array[j][i][2]) + " " + str(1.0) + " " + str(0.0) + " " + str(0.0) + " " + str(1.) + "\n")
+                f.write(str(self.point_clouds_array[j][i][0]) + " " + 
+                        str(self.point_clouds_array[j][i][1]) + " " + 
+                        str(self.point_clouds_array[j][i][2]) + " " + 
+                        str(1.0) + " " + str(0.0) + " " + str(0.0) + " " + str(1.) + "\n")
 
 
 if __name__ == '__main__':
