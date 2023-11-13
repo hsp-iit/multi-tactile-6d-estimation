@@ -1,10 +1,10 @@
+import argparse
 import configparser
 import copy
 import jax.numpy as jnp
 import numpy as np
 import pyquaternion as Quaternion
 import random
-import sys
 import time
 
 from tactile_based_selector import TactileBasedSelector
@@ -77,8 +77,16 @@ def save_pose(points: np.array, twist: np.array, name: str) -> None:
 
 def main():
 
+    # Initialize the parser and parse the inputs
+    parser = argparse.ArgumentParser(description='')
+    parser.add_argument('--config_file_path', dest='config_file_path', help='path to the config file',
+                        type=str, required=True)
+    parser.add_argument('--enable_selection', dest='enable_selection', 
+                        help='enable tactile selection', type=bool, default=False)
+    args = parser.parse_args()
+
     # Initialize the config_file
-    config_file = sys.argv[1]
+    config_file = args.config_file_path
 
     config = configparser.ConfigParser()
     config.read(config_file)
@@ -88,25 +96,24 @@ def main():
 
     # Check whether to select or not the points based on the contact 
     # information
-    if len(sys.argv[2]) >2:
-        tactile_selection = sys.argv[2]
-    else:
-        tactile_selection = None
-
-    if tactile_selection == 'false' or tactile_selection== 'False':
-        print('Baseline')
-        tactile_based_selector.calculate_indexes(False)
-    else:
-        print('Tactile based selection')
-        tactile_based_selector.calculate_indexes()
+    tactile_selection = args.enable_selection
+    tactile_based_selector.calculate_indexes(tactile_selection)
+    print(f'Tactile based selection: {tactile_selection}')
 
     # Load the points_coordinate
     data = np.loadtxt(config['Files']['poses_images'])
     points = data[:, :3].T
 
+    # Load the exponent to keep into account hardware limit.
+    # For example, for a 24GB GPU it is convenient to use 8.5
+    exponent = float(config['Constants']['exponent'])
+    
+    # Define the starting distance threshold
+    distance_threshold = float(config['Constants']['distance_threshold'])
+
     # Load the gain parameters of the optimizer
-    rot_gain = float(config['Files']['rot_gain'])
-    pos_gain = float(config['Files']['pos_gain'])
+    rot_gain = float(config['Constants']['rot_gain'])
+    pos_gain = float(config['Constants']['pos_gain'])
 
     # Load the pose of the sensors.
     poses_sensors = np.loadtxt(config['Files']['poses_sensors'], skiprows = 2)
@@ -161,9 +168,6 @@ def main():
 
     eval_ntuples = jit(eval_ntuples)
 
-    # Define the starting distance threshold
-    distance_threshold = 0.005
-
     # Initialize array to store the filtered tuples
     filter_total = np.empty((tactile_based_selector.number_of_sensors, 0), dtype=np.int16)
 
@@ -186,7 +190,7 @@ def main():
 
         for sens in range(tactile_based_selector.number_of_sensors):
             points_total *= tactile_based_selector.indexes_list[sens].shape[0]
-        total_val = (10 ** 8.5)
+        total_val = (10 ** exponent)
 
         if total_val/points_total >=1:
             loop_bool = False
@@ -250,6 +254,7 @@ def main():
 
                 print('Tuples selected: ')
                 print(filter_total.shape)
+                
         # Generate all the indexes all at once
         else:
 
@@ -312,7 +317,7 @@ def main():
     num_poses = filtered_indexes.shape[1]
 
     # Define the iteration of the optimization process.
-    iters = 700
+    iters = float(config['Constants']['iters'])
 
     # Initialize the centroid
     x0 = np.average(landmarks[0, :])
@@ -344,7 +349,7 @@ def main():
                            [-1, -1, 1],[-1, 1, 1], [-1, 1, -1]])
 
     # Use the following scaler to shift the positions along the above define directions
-    position_scalar = 0.2
+    position_scalar = float(config['Constants']['position_scalar'])
 
     # Initialize the total arrays
     twists_total = np.empty((6,0))
@@ -410,9 +415,6 @@ def main():
     # Save the the final poses, the associated errors and the associated indexes of the point cloud
     np.savez('arrays.npz', twists=twists_total.T, errors=errors_total, 
              indexes=filtered_indexes_total.T)
-
-    # Save the ground truth pose. In our setup was fixed
-    save_pose(points, np.array([0.1, 0.0, 0.2, 0.0, 0.0, 0.0]), './real_pose.off')
 
     # Save the position of contact of the sensors for visualization purpose.
     save_points_as_off(landmarks, './landmarks.off')

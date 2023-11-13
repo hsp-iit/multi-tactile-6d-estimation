@@ -16,7 +16,7 @@ def main():
     # Number of different positions considered per rotation
     loop_range = int(files['loop'])
 
-    # Initialize lists
+    # Initialize lists for poses and erorrs
     total_poses = []
     sum_errors = []
     position_errors = []
@@ -25,12 +25,18 @@ def main():
     depths_all = []
     errors_all = []
 
+    # Load the arrays created by the optimization file
     arrays = np.load('arrays.npz')
     filtered = arrays['indexes']
 
     num_poses = int(filtered.shape[0]/loop_range)
     twists = arrays['twists']
     optimization_errors = arrays['errors']
+
+    # Define ground truth position
+    ground_truth_position = np.array([float(config['Constants']['gt_x']),
+                                     float(config['Constants']['gt_y']),
+                                     float(config['Constants']['gt_z'])])
 
     # We loop over the different initial positions the poses are initialized to
     for j in range(loop_range):
@@ -48,7 +54,7 @@ def main():
             depths_all.append(depths[i])
 
             # Subtract the ground truth positions, while the ground truth rotation is the identity
-            position_errors.append(np.linalg.norm(poses[i,0:3] - np.array([0.1, 0.0, 0.2])))
+            position_errors.append(np.linalg.norm(poses[i,0:3] - ground_truth_position))
             pose_errors.append(np.linalg.norm(poses[i, 3:]))
             filtered_indexes.append(filtered[i])
 

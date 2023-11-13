@@ -45,7 +45,7 @@ class TactileBasedSelector():
 
     Methods
     ------
-    calculate_indexes():
+    calculate_indexes(enable_selection):
         Calculate the remaining indexes after the latent vectors comparison.
     calcuate_database():
         Calculate the off-line database of the images w.r.t. the background.
@@ -57,7 +57,7 @@ class TactileBasedSelector():
         Constructor
 
         Args:
-            config_file_path (str): _description_
+            config_file_path (str): path to the config files
         """
 
         # Set the path to the folder containing the images
@@ -80,7 +80,7 @@ class TactileBasedSelector():
 
         # Set the necessary transforms for the datasets
         self.transforms = None
-        if enable_normalization == 'True':
+        if enable_normalization == 'True' or enable_normalization== 'true':
             self.transforms = torchvision.transforms.Compose(
                 [torchvision.transforms.Normalize(mean, std)])
 
@@ -127,6 +127,7 @@ class TactileBasedSelector():
                     self.latent_vector_background, torch.t(comparison_vector))
                                / (torch.linalg.norm(self.latent_vector_background)
                                   * torch.linalg.norm(comparison_vector))).item()
+                
                 self.angles_comparison_vectors.append(angle_comparison_vector)
                 self.point_clouds_array.append(np.empty((0, 6)))
                 self.indexes_list.append(np.empty((0,1)))
@@ -135,6 +136,9 @@ class TactileBasedSelector():
     def calculate_indexes(self, enable_selection: bool= True) -> None:
         """
         Calculate the remaining indexes after the latent vectors comparison.
+
+        Args:
+            enable_selection (bool): enable tactile selection
         """
 
         angles = np.loadtxt(self.angles_database)
