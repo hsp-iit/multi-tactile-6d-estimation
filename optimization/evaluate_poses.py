@@ -1,22 +1,29 @@
+import argparse
 import configparser
 import numpy as np
-import sys
+import os
 
+dir_name = os.path.abspath(os.path.dirname(__file__))
 
 def main():
     """_
     Compute the total errors for each pose considering the interpenetration depth
     and the distance error between candidate points and sensors.
     """
-    config_file = sys.argv[1]
+    parser = argparse.ArgumentParser(description='')
+    parser.add_argument('--config_file_path', dest='config_file_path', help='path to the config file',
+                        type=str, required=True)
+    args = parser.parse_args()
+
+    config_file = args.config_file_path
     config = configparser.ConfigParser()
     config.read(config_file)
     files = config['Files']
-
+    params = config['Parameters']
     # Number of different positions considered per rotation
-    loop_range = int(files['loop'])
+    loop_range = int(params['loop'])
 
-    # Initialize lists for poses and erorrs
+    # Initialize lists
     total_poses = []
     sum_errors = []
     position_errors = []
@@ -25,19 +32,16 @@ def main():
     depths_all = []
     errors_all = []
 
-    # Load the arrays created by the optimization file
-    arrays = np.load('arrays.npz')
+    arrays = np.load(os.path.join(dir_name + '/arrays.npz'))
     filtered = arrays['indexes']
 
     num_poses = int(filtered.shape[0]/loop_range)
     twists = arrays['twists']
     optimization_errors = arrays['errors']
 
-    # Define ground truth position
-    ground_truth_position = np.array([float(config['Constants']['gt_x']),
-                                     float(config['Constants']['gt_y']),
-                                     float(config['Constants']['gt_z'])])
-
+    ground_truth_position = np.array([float(config['Parameters']['gt_x']),
+                                     float(config['Parameters']['gt_y']),
+                                     float(config['Parameters']['gt_z'])])
     # We loop over the different initial positions the poses are initialized to
     for j in range(loop_range):
         depths = np.loadtxt(files['depth']+ "depths" + str(j) + ".txt")
@@ -61,10 +65,8 @@ def main():
     # Sort the errors
     ordered = np.argsort(np.array(sum_errors))
 
-    np.savez('final_results.npz', total_poses=np.array(total_poses), 
-             sum_errors=np.array(sum_errors), position_errors=np.array(position_errors),
-             pose_errors=np.array(pose_errors), ordered_poses=np.array(ordered), 
-             all_depths=np.array(depths_all), all_errors=np.array(errors_all))
+    np.savez('final_results.npz', total_poses=np.array(total_poses), sum_errors=np.array(sum_errors), position_errors=np.array(position_errors),
+             pose_errors=np.array(pose_errors), ordered_poses=np.array(ordered), all_depths=np.array(depths_all), all_errors=np.array(errors_all))
 
 if __name__ == '__main__':
 

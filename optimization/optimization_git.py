@@ -2,17 +2,21 @@ import argparse
 import configparser
 import copy
 import jax.numpy as jnp
+import logging
 import numpy as np
 import pyquaternion as Quaternion
 import random
 import time
 
-from tactile_based_selector import TactileBasedSelector
+from tactile_based_selector_test import TactileBasedSelector
 from itertools import combinations
 from jax import jit, vmap, grad
 from jaxlie import SO3
 from scipy.stats import special_ortho_group
 from tqdm import tqdm
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 np.random.seed(0)
 random.seed(0)
@@ -22,7 +26,7 @@ def generate_indexes(indexes_list:list) -> np.array:
     Generate a numpy array with the indexes of the cartesian product between numpy arrays.
 
     Args:
-        indexes_list (list): list of arrays .containing the indexes of the points of the point cloud 
+        indexes_list (list): list of arrays .containing the indexes of the points of the point cloud
         selected for every sensor
 
     Returns:
@@ -52,12 +56,12 @@ def save_points_as_off(points: np.array, name: str) -> None:
         out.write('OFF\r\n')
         out.write(str(points.shape[1]) + ' 0 0\r\n')
         for i in range(points.shape[1]):
-            out.write(str(points[0, i]) + ' ' + str(points[1, i]) + ' ' + 
+            out.write(str(points[0, i]) + ' ' + str(points[1, i]) + ' ' +
                       str(points[2, i]) + ' \r\n')
 
 def save_pose(points: np.array, twist: np.array, name: str) -> None:
     """
-    Transform a point cloud with a given twist and then save the point cloud 
+    Transform a point cloud with a given twist and then save the point cloud
     as .off.
 
     Args:
@@ -81,24 +85,23 @@ def main():
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('--config_file_path', dest='config_file_path', help='path to the config file',
                         type=str, required=True)
-    parser.add_argument('--enable_selection', dest='enable_selection', 
+
+    parser.add_argument('--enable_selection', dest='enable_selection',
                         help='enable tactile selection', type=bool, default=False)
+
     args = parser.parse_args()
 
-    # Initialize the config_file
-    config_file = args.config_file_path
-
     config = configparser.ConfigParser()
-    config.read(config_file)
+    config.read(args.config_file_path)
 
     # Initialize the TactileBasedSelector
-    tactile_based_selector = TactileBasedSelector(config_file)
+    tactile_based_selector = TactileBasedSelector(args.config_file_path)
 
-    # Check whether to select or not the points based on the contact 
+    # Check whether to select or not the points based on the contact
     # information
     tactile_selection = args.enable_selection
     tactile_based_selector.calculate_indexes(tactile_selection)
-    print(f'Tactile based selection: {tactile_selection}')
+    logger.info(f'Tactile based selection: {tactile_selection}')
 
     # Load the points_coordinate
     data = np.loadtxt(config['Files']['poses_images'])
@@ -106,14 +109,14 @@ def main():
 
     # Load the exponent to keep into account hardware limit.
     # For example, for a 24GB GPU it is convenient to use 8.5
-    exponent = float(config['Constants']['exponent'])
-    
+    exponent = float(config['Parameters']['exponent'])
+
     # Define the starting distance threshold
-    distance_threshold = float(config['Constants']['distance_threshold'])
+    distance_threshold = float(config['Parameters']['distance_threshold'])
 
     # Load the gain parameters of the optimizer
-    rot_gain = float(config['Constants']['rot_gain'])
-    pos_gain = float(config['Constants']['pos_gain'])
+    rot_gain = float(config['Parameters']['rot_gain'])
+    pos_gain = float(config['Parameters']['pos_gain'])
 
     # Load the pose of the sensors.
     poses_sensors = np.loadtxt(config['Files']['poses_sensors'], skiprows = 2)
@@ -124,24 +127,24 @@ def main():
         landmarks[:, i] = poses_sensors[i,:3]
 
     # Distance-based selection method
-    def eval_tuple(ntuple: jnp.array, points: np.array, landmarks: np.array, 
+    def eval_tuple(ntuple: jnp.array, points: np.array, landmarks: np.array,
                    comb: tuple, threshold: float)-> jnp.bool_:
         """
-        Evaluate the n-tuple of sensors depending on the actual position of the sensors given by the 
+        Evaluate the n-tuple of sensors depending on the actual position of the sensors given by the
         proprioception.
-        Return true if the n-tuple is valid, i.e. the distance between the sensors in the n-tuple is 
+        Return true if the n-tuple is valid, i.e. the distance between the sensors in the n-tuple is
         compatible with that of the sensors as given by the proprioception, false otherwise.
 
         Args:
-            ntuple (jnp.array): the n-tuple containing the indexes to be used to access the array of 
+            ntuple (jnp.array): the n-tuple containing the indexes to be used to access the array of
                 points and obtain the corresponding 3D Cartesian position of the sensor
-            points (np.array): array of all points, each to be considered as the Cartesian position 
-                of one sensor 
+            points (np.array): array of all points, each to be considered as the Cartesian position
+                of one sensor
             landmarks (np.array): positions of the sensors from the proprioception
-            comb (tuple): tuple with all possible connections between N sensors. For example: for 
+            comb (tuple): tuple with all possible connections between N sensors. For example: for
                 three sensors ((0, 1), (0, 2), (1, 2))
-            threshold (float, optional): it decides if the n-tuple is accepted or not by comparing 
-                the difference between the mutual landmarks distance and the mutual points distance 
+            threshold (float, optional): it decides if the n-tuple is accepted or not by comparing
+                the difference between the mutual landmarks distance and the mutual points distance
                 averaged across all combinations in comb
 
         Returns:
@@ -161,9 +164,9 @@ def main():
         return jnp.bool_((jnp.heaviside(jnp.min(jnp.array([threshold - error, 0.0])), 1.0)))
 
     # Distance-based selection method jax implementation
-    def eval_ntuples(indexes: jnp.array, points: np.array, landmarks: np.array, comb: tuple, 
+    def eval_ntuples(indexes: jnp.array, points: np.array, landmarks: np.array, comb: tuple,
                      threshold: float)-> jnp.array:
-        return vmap(eval_tuple, in_axes = (1, None, None, None, None))(indexes, points, landmarks, 
+        return vmap(eval_tuple, in_axes = (1, None, None, None, None))(indexes, points, landmarks,
                                                                        comb, threshold)
 
     eval_ntuples = jit(eval_ntuples)
@@ -252,15 +255,14 @@ def main():
                 indexes = None
                 filtered = None
 
-                print('Tuples selected: ')
-                print(filter_total.shape)
-                
+
+
+
         # Generate all the indexes all at once
         else:
 
             indexes = generate_indexes(tactile_based_selector.indexes_list)
-            print('Tuples selected: ')
-            print(indexes.shape)
+
             indexes = jnp.array(indexes)
 
             filtered = eval_ntuples(indexes, points, landmarks, comb_list, distance_threshold)
@@ -268,8 +270,9 @@ def main():
             filtered_indexes = indexes[:, filtered]
             filter_total = np.append(filter_total, np.array(filtered_indexes), 1)
 
+        logger.info(f'Tuples selected: {filter_total.shape}')
         indexes = filter_total
-        
+
         points = jnp.array(points)
         landmarks = jnp.array(landmarks)
 
@@ -286,14 +289,13 @@ def main():
             filtered_indexes = indexes[:, filter]
 
             # Print the actual number of tuples
-            print('Number of tuples after round of distance-based selection: ')
-            print(filtered_indexes.shape)
+            logger.info(f'Number of tuples after round of distance-based selection: {filtered_indexes.shape}')
 
             # Check if we have a sufficient number of ntuples to consider yet not too high
             if filtered_indexes.shape[1] < 5000 and filtered_indexes.shape[1] >0:
                 boolean_ntuples = False
 
-            # Check whether we already increased the distance threshold even if the number of 
+            # Check whether we already increased the distance threshold even if the number of
             # ntuples is high
             elif filtered_indexes.shape[1] > 5000 and boolean_loop:
                 boolean_ntuples = False
@@ -311,13 +313,12 @@ def main():
         filtered_indexes = indexes
 
     # Print the final number of tuples
-    print("Remaining number of tuples: ")
-    print(filtered_indexes.shape)
+    logger.info(f"Remaining number of tuples: {filtered_indexes.shape}")
 
     num_poses = filtered_indexes.shape[1]
 
     # Define the iteration of the optimization process.
-    iters = float(config['Constants']['iters'])
+    iters = int(config['Parameters']['iters'])
 
     # Initialize the centroid
     x0 = np.average(landmarks[0, :])
@@ -326,30 +327,29 @@ def main():
 
     # Time benchmarking
     start_time = time.time()
-    q = Quaternion.Quaternion(axis=[1, 0, 0], angle=0)
+    initial_quaternion = Quaternion.Quaternion(axis=[1, 0, 0], angle=0)
 
-    pose = np.concatenate((np.array([x0, y0, z0]), q.axis * q.angle), axis=0)
+    pose = np.concatenate((np.array([x0, y0, z0]), initial_quaternion.axis * initial_quaternion.angle), axis=0)
 
     twists = np.repeat(np.expand_dims(pose, 1), num_poses, axis=1)
 
     # Generate as many random rotations as the number of ntuples under consideration
     for i in range(num_poses):
 
-        q = Quaternion.Quaternion(matrix = special_ortho_group.rvs(3))
+        initial_quaternion = Quaternion.Quaternion(matrix = special_ortho_group.rvs(3))
 
         twists[0:3, i] = np.array([x0, y0, z0])
-        twists[3:6, i] = q.axis * q.angle
-    np.savetxt('twistsparam2.txt', twists)
-    print("Time required to initialize the poses:")
-    print(time.time() - start_time)
+        twists[3:6, i] = initial_quaternion.axis * initial_quaternion.angle
+
+    logger.info(f"Time required to initialize the poses: {time.time() - start_time}")
 
     # For each given orientation, consider alternatives for the initial position around the centroid.
-    directions = np.array([[0, 0, 0], [1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], 
-                           [0, 0, -1], [1, 1, 1], [-1, -1, -1], [1, -1, 1], [1, -1, -1], [1, 1, -1], 
+    directions = np.array([[0, 0, 0], [1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1],
+                           [0, 0, -1], [1, 1, 1], [-1, -1, -1], [1, -1, 1], [1, -1, -1], [1, 1, -1],
                            [-1, -1, 1],[-1, 1, 1], [-1, 1, -1]])
 
     # Use the following scaler to shift the positions along the above define directions
-    position_scalar = float(config['Constants']['position_scalar'])
+    position_scalar = float(config['Parameters']['position_scalar'])
 
     # Initialize the total arrays
     twists_total = np.empty((6,0))
@@ -409,11 +409,11 @@ def main():
     errors_total = eval_items_final(twists_total)
 
     for position in range(directions.shape[0]):
-        np.savetxt("rotations_"+str(position)+".txt", twists_total.T[position*num_poses:
+        np.savetxt("rotations_best"+str(position)+".txt", twists_total.T[position*num_poses:
                                                                          (position+1)*num_poses,:])
 
     # Save the the final poses, the associated errors and the associated indexes of the point cloud
-    np.savez('arrays.npz', twists=twists_total.T, errors=errors_total, 
+    np.savez('arrays.npz', twists=twists_total.T, errors=errors_total,
              indexes=filtered_indexes_total.T)
 
     # Save the position of contact of the sensors for visualization purpose.
