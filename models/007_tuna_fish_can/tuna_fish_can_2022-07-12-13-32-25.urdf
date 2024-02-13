@@ -1,0 +1,20 @@
+<?xml version="1.0" ?>
+<robot name="tuna_fish_can">
+    <link name="canonical_link">
+        <inertial>
+            <origin xyz="0.00010567885000645949 -0.0001603727459921299 -0.004701493004794839" rpy="0.0 0.0 0.0"/>
+            <mass value="1.0"/>
+            <inertia ixx="0.000521055690353518" ixy="1.41069818240467e-07" ixz="8.028587044136655e-08" iyy="0.0005216094064885035" iyz="1.7358784523919138e-08" izz="0.0009134735600161332"/>
+        </inertial>
+        <visual>
+            <geometry>
+                <mesh filename="./textured.obj" scale="1.0 1.0 1.0"/>
+            </geometry>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="./textured_vhacd2.obj" scale="1.0 1.0 1.0"/>
+            </geometry>
+        </collision>
+    </link>
+</robot>

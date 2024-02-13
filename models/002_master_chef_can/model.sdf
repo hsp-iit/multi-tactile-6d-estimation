@@ -1,0 +1,40 @@
+<?xml version="1.0" ?>
+<sdf version="1.7">
+    <model name="002_master_chef_can">
+        <link name="002_master_chef_can_link">
+            <inertial>
+                <pose>-0.001430746885156838 0.00048514434405273803 -0.002915754175166822 0.0 0.0 0.0</pose>
+                <mass>1.0</mass>
+                <inertia>0.002148743992557147 9.418062604909454e-07 -1.33512640676406e-06 0.0021443693881043786 4.6285887508332263e-07 0.0012524593202664761</inertia>
+            </inertial>
+            <collision name="002_master_chef_can_collision">
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>1</mu>
+                            <mu2>1</mu2>
+                        </ode>
+                    </friction>
+                </surface>
+                <max_contact>1</max_contact>
+                <geometry>
+                    <mesh>
+                        <uri>model://002_master_chef_can/textured.obj</uri>
+                    </mesh>
+                </geometry>
+            </collision>
+            <visual name="002_master_chef_can_visual">
+                <geometry>
+                    <mesh>
+                        <uri>model://002_master_chef_can/textured.obj</uri>
+                    </mesh>
+                </geometry>
+            </visual>
+        </link>
+
+        <joint name="world_to_base_link" type="fixed">
+            <parent>world</parent>
+            <child>002_master_chef_can_link</child>
+        </joint>
+    </model>
+</sdf>

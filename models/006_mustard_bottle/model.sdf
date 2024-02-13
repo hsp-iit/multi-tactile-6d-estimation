@@ -1,0 +1,40 @@
+<?xml version="1.0" ?>
+<sdf version="1.7">
+    <model name="006_mustard_bottle">
+        <link name="006_mustard_bottle_link">
+            <inertial>
+                <pose>-0.0009723425634233313 -0.0020723849022121475 -0.005612683258425311 0.0 0.0 0.0</pose>
+                <mass>1.0</mass>
+                <inertia>0.002430465856537604 0.00012578603734415434 -8.248977722378307e-06 0.0026748616892600034 -1.1689973433406367e-05 0.0007015119851760366</inertia>
+            </inertial>
+            <collision name="006_mustard_bottle_collision">
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>1</mu>
+                            <mu2>1</mu2>
+                        </ode>
+                    </friction>
+                </surface>
+                <max_contact>1</max_contact>
+                <geometry>
+                    <mesh>
+                        <uri>model://006_mustard_bottle/textured.obj</uri>
+                    </mesh>
+                </geometry>
+            </collision>
+            <visual name="006_mustard_bottle_visual">
+                <geometry>
+                    <mesh>
+                        <uri>model://006_mustard_bottle/textured.obj</uri>
+                    </mesh>
+                </geometry>
+            </visual>
+        </link>
+
+        <joint name="world_to_base_link" type="fixed">
+            <parent>world</parent>
+            <child>006_mustard_bottle_link</child>
+        </joint>
+    </model>
+</sdf>

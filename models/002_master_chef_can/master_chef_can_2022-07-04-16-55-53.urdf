@@ -1,0 +1,20 @@
+<?xml version="1.0" ?>
+<robot name="master_chef_can">
+    <link name="canonical_link">
+        <inertial>
+            <origin xyz="-0.001430746885156838 0.00048514434405273803 -0.002915754175166822" rpy="0.0 0.0 0.0"/>
+            <mass value="1.0"/>
+            <inertia ixx="0.002148743992557147" ixy="9.418062604909454e-07" ixz="-1.33512640676406e-06" iyy="0.0021443693881043786" iyz="4.6285887508332263e-07" izz="0.0012524593202664761"/>
+        </inertial>
+        <visual>
+            <geometry>
+                <mesh filename="./textured.obj" scale="1.0 1.0 1.0"/>
+            </geometry>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="./textured_vhacd2.obj" scale="1.0 1.0 1.0"/>
+            </geometry>
+        </collision>
+    </link>
+</robot>

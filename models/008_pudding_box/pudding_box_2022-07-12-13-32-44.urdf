@@ -1,0 +1,20 @@
+<?xml version="1.0" ?>
+<robot name="pudding_box">
+    <link name="canonical_link">
+        <inertial>
+            <origin xyz="-0.00028334906421626866 0.0034928679783433306 -0.0033462999141614424" rpy="0.0 0.0 0.0"/>
+            <mass value="1.0"/>
+            <inertia ixx="0.000811350721835011" ixy="-0.0001467339020016241" ixz="-1.944177041691539e-05" iyy="0.0010115741355698582" iyz="-6.159532178213993e-06" izz="0.0016130214937752443"/>
+        </inertial>
+        <visual>
+            <geometry>
+                <mesh filename="./textured.obj" scale="1.0 1.0 1.0"/>
+            </geometry>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="./textured_vhacd2.obj" scale="1.0 1.0 1.0"/>
+            </geometry>
+        </collision>
+    </link>
+</robot>

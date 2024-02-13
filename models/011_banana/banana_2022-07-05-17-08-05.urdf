@@ -1,0 +1,20 @@
+<?xml version="1.0" ?>
+<robot name="banana">
+    <link name="canonical_link">
+        <inertial>
+            <origin xyz="-0.0026970848327457107 -0.0008073138950029232 0.000571883765565649" rpy="0.0 0.0 0.0"/>
+            <mass value="1.0"/>
+            <inertia ixx="0.002184516496996336" ixy="-0.0006454676934493116" ixz="1.5460406041992964e-05" iyy="0.00045160780574928747" iyz="-1.2944127196369404e-05" izz="0.0024866462742333616"/>
+        </inertial>
+        <visual>
+            <geometry>
+                <mesh filename="./textured.obj" scale="1.0 1.0 1.0"/>
+            </geometry>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="./textured_vhacd2.obj" scale="1.0 1.0 1.0"/>
+            </geometry>
+        </collision>
+    </link>
+</robot>
