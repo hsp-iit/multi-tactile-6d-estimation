@@ -44,7 +44,7 @@ def main():
                                      float(config['Parameters']['gt_z'])])
     # We loop over the different initial positions the poses are initialized to
     for j in range(loop_range):
-        depths = np.loadtxt(files['depth']+ "depths" + str(j) + ".txt")
+        depths = np.loadtxt(files['depth']+ "depths_" + str(j) + ".txt")
         poses = twists[j*num_poses : (j+1)*num_poses, :]
 
         errors = optimization_errors[j*num_poses : (j+1)*num_poses]

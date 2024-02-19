@@ -5,6 +5,7 @@ import sys
 import torch
 import torchvision
 
+sys.path.append('../')
 from PIL import Image
 from train.encoder import Encoder
 from train.decoder import Decoder

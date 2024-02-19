@@ -8,7 +8,7 @@ import pyquaternion as Quaternion
 import random
 import time
 
-from tactile_based_selector_test import TactileBasedSelector
+from tactile_based_selector import TactileBasedSelector
 from itertools import combinations
 from jax import jit, vmap, grad
 from jaxlie import SO3

@@ -10,30 +10,28 @@ dir_name = os.path.abspath(os.path.dirname(__file__))
 
 def main():
     parser = argparse.ArgumentParser(description='')
-    parser.add_argument('--json_folder', dest='json_folder', help='absolute path to the json folder',
-                        type=str, required=True)
-    parser.add_argument('--weights_path', dest='weights', help='absolute path to the weights',
+    parser.add_argument('--weights', dest='weights', help='weights name',
                         type=str, required=True)
     parser.add_argument('--working_directory_path', dest='working_directory', help='absolute path to the working directory',
                         type=str, required=True)
     args = parser.parse_args()
 
     # Create the image directory if necessary
-    if not os.path.isdir(dir_name + "/results_directory_pose_estimation"):
+    if not os.path.isdir(args.working_directory + "/results_directory_pose_estimation"):
         logger.info("Creating pose estimation directory..")
-        os.mkdir(dir_name + "/results_directory_pose_estimation")
+        os.mkdir(args.working_directory + "/results_directory_pose_estimation")
 
-    results_directory = dir_name + "/results_directory_pose_estimation"
+    results_directory = args.working_directory + "/results_directory_pose_estimation"
 
     # Objects considered
-    with open(os.path.join(args.json_folder, 'objects.json')) as fo:
+    with open(os.path.join(args.working_directory, "json/objects.json")) as fo:
         list_objects = json.load(fo)
 
     # Weights of the autoencoder
-    weights = args.weights
+    weights = os.path.join(args.working_directory, 'weights', args.weights)
 
     # List of corresponding number of meshes for each object
-    with open(os.path.join(args.json_folder, 'meshes.json')) as fm:
+    with open(os.path.join(args.working_directory, 'json/meshes.json')) as fm:
         list_meshes = json.load(fm)
 
     # Loop over the object to create the config files
@@ -68,7 +66,7 @@ def main():
                     "mean = 0.3839, 0.4071, 0.3787 \n"
                     "std = 0.1626, 0.1021, 0.0827 \n"
                     "prism_boolean = False \n"
-                    "background = ../background.png \n"
+                    "background = " + args.working_directory + "/background.png \n"
                     "model = " + weights + " \n"
                     "batch_size = 4 \n"
                     "encoded_space = 128 \n"
@@ -77,10 +75,10 @@ def main():
                     "number_of_sensors = 3 \n"
                     "poses_images = " + args.working_directory + "/point_clouds/" + obj + "/poses_images.txt \n"
                     "poses_sensors = " + args.working_directory + "/final_triplets/" + obj + "/triplet_" + str(triplet) + "/sensors.off \n"
-                    "depth = " + args.working_directory + "/phys_example/build/ \n"
+                    "depth = " + args.working_directory + "/depths/ \n"
                     "error = " + args.working_directory + "/errors/ \n"
                     "rotation = " + args.working_directory + "/rotations/ \n"
-                    "angles_database = " + args.working_directory + "/angles_database.txt \n"
+                    "angles_database = " + args.working_directory + "/point_clouds/" + obj + "/angles_database.txt \n"
                     "point_cloud_file = " + args.working_directory + "/point_clouds/" + obj + "/poses_images.txt \n"
                     "image_sensor_1 = " + args.working_directory + "/final_triplets/" + obj + "/triplet_" + str(triplet) + "/Image_heatmap_0.png \n"
                     "image_sensor_2 = " + args.working_directory + "/final_triplets/" + obj + "/triplet_" + str(triplet) + "/Image_heatmap_1.png \n"
@@ -102,11 +100,12 @@ def main():
             f.close()
 
             f = open(config_directory + "/config_physx.ini", "w")
-            f.write("MESH_PATH ../../models/" + obj + "/textured_ \n"
+            f.write("MESH_PATH " + os.path.join(args.working_directory, "models" ,obj , "textured_") + " \n"
                     "NUMBER_OF_MESHES " + list_meshes[index_obj] + " \n"
                     "NUMBER_OF_SENSORS 3 \n"
-                    "ROTATIONS_FILE_PATH ../../rotations/ \n"
-                    "LANDMARKS_PATH ../../final_triplets/" + obj + "/triplet_" + str(triplet) + "/poses_sensors.txt")
+                    "ROTATIONS_FILE_PATH " + os.path.join(args.working_directory, "rotations") + " \n"
+                    "DEPTHS_FILE_PATH " + os.path.join(args.working_directory, "depths") + " \n"
+                    "LANDMARKS_PATH " + os.path.join(args.working_directory, "final_triplets", obj , "triplet_" + str(triplet), "poses_sensors.txt"))
             f.close()
 
 

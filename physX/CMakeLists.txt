@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 # PHYSX_PATH - path to the `{cloned repository}/physx` repo directory git://github.com/NVIDIAGameWorks/PhysX.git
 
 project(example)
-set(PHYSX_PATH /path/to/physx/directory)
+set(PHYSX_PATH /home/user/PhysX/physx)
 set(PHYSX_ROOT_DIR ${PHYSX_PATH})
 set(PHYSX_INCLUDE_DIRS ${PHYSX_PATH}/include/ ${PHYSX_PATH}/../pxshared/include/ )
 find_package (Eigen3 3.3 REQUIRED NO_MODULE)
@@ -14,6 +14,7 @@ find_package (OpenMP)
 if(OpenMP_CXX_FOUND)
   message("Found")
 endif()
+
 set(PHYSX_LIBRARIES
 	PhysXExtensions
 	PhysX
@@ -27,7 +28,7 @@ set(PHYSX_LIBRARIES
 
 ADD_EXECUTABLE(script
 
-    src/main_general_general.cpp
+    src/main.cpp
     src/wavefront.h
     src/wavefront.cpp
     src/FrameworkFoundation.h
@@ -50,12 +51,13 @@ set(CMAKEMODULES_PATH ${PHYSX_PATH}/../externals/cmakemodules)
 set(PX_OUTPUT_LIB_DIR ${CMAKE_CURRENT_BINARY_DIR}/externals/physx)
 set(PX_OUTPUT_BIN_DIR ${CMAKE_CURRENT_BINARY_DIR}/externals/physx)
 add_subdirectory(${PHYSX_PATH}/compiler/public externals/physx)
+
 find_package(Threads REQUIRED)
 include_directories(PRIVATE ${PHYSX_ROOT_DIR}/include)
 
 
 TARGET_LINK_LIBRARIES(
-    general_general
+    script
     ${PHYSX_LIBRARIES}
     Threads::Threads
     Eigen3::Eigen

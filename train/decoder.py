@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchsummary import summary
+
 
 
 class Decoder(nn.Module):
@@ -80,6 +80,8 @@ class Decoder(nn.Module):
         # Initialize the upsample layers
         self.ups = nn.ModuleList([nn.Upsample(scale_factor=s, mode='nearest') for s in stride])
 
+        # Useful just because the weights need this field
+        self.bns = nn.ModuleList([nn.BatchNorm2d(oc) for oc in out_channels[:-1]])
         # Initialize the flatten layer
         self.flatten = nn.Flatten()
 
@@ -94,7 +96,7 @@ class Decoder(nn.Module):
         self.last_filter = in_channels[0]
 
         # Initialize the first layer
-        output_linear_size = int(self.last_filter * (image_size_w/ self.stride_factor) * 
+        output_linear_size = int(self.last_filter * (image_size_w/ self.stride_factor) *
                                 (image_size_h/ self.stride_factor))
         self.fc = nn.Linear(latent_size, output_linear_size)
 
@@ -102,12 +104,12 @@ class Decoder(nn.Module):
     def forward(self, x):
         """
         Forward pass of the network. It reconstructs the output image given the latent representation x.
-        
+
         Parameters
         ----------
         x : torch.tensor
             tensor of the input latent vectors
-        
+
         Returns
         -------
         torch.tensor
@@ -128,4 +130,3 @@ class Decoder(nn.Module):
         x = self.deconvs[-1](x)
 
         return torch.nn.LeakyReLU()(x)
-    

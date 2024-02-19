@@ -22,6 +22,7 @@ uint number_of_sensors;
 std::string mesh_path;
 std::string rotations_file_path;
 std::string landmarks_path;
+std::string depths_file_path;
 
 // Load the configuration file parameters
 bool LoadConfigurationFile(std::string config_file_path)
@@ -56,7 +57,12 @@ bool LoadConfigurationFile(std::string config_file_path)
         {
             config_file >> rotations_file_path;
             std::cout<<"Rotations files path : " + rotations_file_path<<std::endl;;
-       }
+        }
+        if (param == "DEPTHS_FILE_PATH")
+        {
+            config_file >> depths_file_path;
+            std::cout<<"Depths files path : " + depths_file_path<<std::endl;;
+        }
         if (param == "LANDMARKS_PATH")
         {
             config_file >> landmarks_path;
@@ -206,7 +212,7 @@ int main (int argc, char** argv)
 	{
 
 		// Read from rotations file
-		std::ifstream file ((rotations_file_path + "rotations_best" + std::to_string(k) + ".txt").c_str());
+		std::ifstream file ((rotations_file_path + "/rotations_best" + std::to_string(k) + ".txt").c_str());
 		std::vector<std::vector<float>> vectors;
 		std::string line;
 
@@ -285,8 +291,7 @@ int main (int argc, char** argv)
 		}
 
         // Save the file with the depths for every initial position
-
-        std::fstream filev("depths" + std::to_string(k) + ".txt", std::ios_base::out);
+        std::fstream filev(depths_file_path + "/depths_" + std::to_string(k) + ".txt", std::ios_base::out);
         for (int i = 0; i < depths.size(); i++)
             filev << depths[i] << std::endl;
     }

@@ -16,26 +16,15 @@ class ADIEvaluator():
         object_names =\
         [
             '002_master_chef_can',
-            '003_cracker_box',
             '004_sugar_box',
-            '005_tomato_soup_can',
             '006_mustard_bottle',
             '007_tuna_fish_can',
             '008_pudding_box',
-            '009_gelatin_box',
-            '010_potted_meat_can',
             '011_banana',
             '019_pitcher_base',
             '021_bleach_cleanser',
-            '024_bowl',
-            '025_mug',
-            '035_power_drill',
             '036_wood_block',
-            '037_scissors',
-            '040_large_marker',
-            '051_large_clamp',
-            '052_extra_large_clamp',
-            '061_foam_brick'
+            '040_large_marker'
         ]
 
         self.clouds = { object_name : self.load_point_cloud(os.path.join(ycbv_models_path, 'models', object_name, 'points.xyz')) for object_name in object_names}
@@ -92,8 +81,7 @@ class ADIEvaluator():
 
 
 
-def calculate_auc(object_string, poses, num_poses):
-    ycb_video_models_path = './YCB_Video_Models/'
+def calculate_auc(object_string, poses, num_poses, ycb_video_models_path):
     evaluator = ADIEvaluator(ycb_video_models_path)
     gt = np.array([0.1, 0.0, 0.2, 1.0, 0.0, 0.0, 0.0])
     gt = np.repeat(np.expand_dims(gt, 0), num_poses, axis=0)
@@ -102,8 +90,7 @@ def calculate_auc(object_string, poses, num_poses):
 
     return auc
 
-def calculate_auc_rot(object_string, poses, num_poses, bool_val = False):
-    ycb_video_models_path = './YCB_Video_Models/'
+def calculate_auc_rot(object_string, poses, num_poses, ycb_video_models_path, bool_val = False):
     evaluator = ADIEvaluator(ycb_video_models_path)
     poses[:,:3] = np.array([0.1, 0.0, 0.2])
     gt = np.array([0.1, 0.0, 0.2, 1.0, 0.0, 0.0, 0.0])
@@ -208,15 +195,20 @@ def create_table_all_objects(dict_objects, results_directory):
 def main():
 
     parser = argparse.ArgumentParser(description='')
-    parser.add_argument('--results_directory', dest='results_directory', help='path to the results_directory',
+    parser.add_argument('--results_directory', dest='results_directory', help='path to the results directory',
                         type=str, required=True)
+    parser.add_argument('--json_directory', dest='json_directory', help='path to the json directory',
+                        type=str, required=True)
+    parser.add_argument('--ycb_directory', dest='ycb_directory', help='path to the ycb directory',
+                        type=str, required=True)
+
     args = parser.parse_args()
 
     average_error = []
     average_rotation_error = []
     average_position_error = []
 
-    with open('contacts.json') as f:
+    with open(args.json_directory + '/contacts.json') as f:
         contacts_dict = json.load(f)
 
     average_error = np.array(average_error)
@@ -288,32 +280,6 @@ def main():
                 dict_objects[key][triplet][method_list[method]]["Mean"].append(np.mean(np.array(contacts_dict[key][triplet][method_list[method]][:5])))
                 dict_objects[key][triplet][method_list[method]]["Mean"].append(np.mean(np.array(contacts_dict[key][triplet][method_list[method]])))
 
-                #print(np.array(dict_objects[key][triplet][method_list[method]]["Poses"]).shape)
-            # Save table for every single triplet
-            numbers = {'Best pose sensor': [dict_objects[key][triplet]['Sensor']["Best"][0], dict_objects[key][triplet]['Sensor']["Best"][1],
-                                            dict_objects[key][triplet]['Sensor']["Best"][2], dict_objects[key][triplet]['Sensor']['Mean'][9]],
-                       'Best pose baseline': [dict_objects[key][triplet]['Baseline']["Best"][0], dict_objects[key][triplet]['Baseline']["Best"][1],
-                                              dict_objects[key][triplet]['Baseline']["Best"][2], dict_objects[key][triplet]['Baseline']['Mean'][9]],
-                       'Best 5 poses sensor': [dict_objects[key][triplet]['Sensor']["Best 5"][0], dict_objects[key][triplet]['Sensor']["Best 5"][1],
-                                               dict_objects[key][triplet]['Sensor']["Best 5"][2], dict_objects[key][triplet]['Sensor']['Mean'][10]],
-                       'Best 5 poses baseline': [dict_objects[key][triplet]['Baseline']["Best 5"][0], dict_objects[key][triplet]['Baseline']["Best 5"][1],
-                                                 dict_objects[key][triplet]['Baseline']["Best 5"][2], dict_objects[key][triplet]['Baseline']['Mean'][10]],
-                       'Best 10 poses sensor': [dict_objects[key][triplet]['Sensor']["Best 10"][0], dict_objects[key][triplet]['Sensor']["Best 10"][1],
-                                                dict_objects[key][triplet]['Sensor']["Best 10"][2], dict_objects[key][triplet]['Sensor']['Mean'][11]],
-                       'Best 10 poses baseline': [dict_objects[key][triplet]['Baseline']["Best 10"][0], dict_objects[key][triplet]['Baseline']["Best 10"][1],
-                                                  dict_objects[key][triplet]['Baseline']["Best 10"][2], dict_objects[key][triplet]['Baseline']['Mean'][11]]}
-            df = pd.DataFrame(numbers, index=['Metric Error', 'Position Error', 'Rotation Error', 'Contacts'])
-            with open(args.results_directory + "/" + key + "/" + triplet_list_path[triplet] + method_list_path[method] + 'table.tex', 'w') as tf:
-                tf.write(r'\documentclass{article}')
-                tf.write('\n')
-                tf.write(r'\usepackage{booktabs}')
-                tf.write('\n')
-                tf.write(r'\begin{document}')
-                tf.write('\n')
-                tf.write(df.style.to_latex())
-                tf.write('\n')
-                tf.write(r'\end{document}')
-
 
         # Average of the best, 5 and 10 poses for all the triplets
         for k in range(12):
@@ -331,98 +297,43 @@ def main():
         dict_objects[key][4]['Sensor']["Mean"].append(calculate_auc(key, np.concatenate((np.array([dict_objects[key][0]['Sensor']["Poses"][0]]),
                                                                                          np.array([dict_objects[key][1]['Sensor']["Poses"][0]]),
                                                                                          np.array([dict_objects[key][2]['Sensor']["Poses"][0]]),
-                                                                                         np.array([dict_objects[key][3]['Sensor']["Poses"][0]])), axis=0), 4))
+                                                                                         np.array([dict_objects[key][3]['Sensor']["Poses"][0]])), axis=0), 4, args.ycb_directory))
 
         dict_objects[key][4]['Baseline']["Mean"].append(calculate_auc(key, np.concatenate((np.array([dict_objects[key][0]['Baseline']["Poses"][0]]),
-                                                                                         np.array([dict_objects[key][1]['Baseline']["Poses"][0]]),
-                                                                                         np.array([dict_objects[key][2]['Baseline']["Poses"][0]]),
-                                                                                         np.array([dict_objects[key][3]['Baseline']["Poses"][0]])), axis=0), 4))
+                                                                                           np.array([dict_objects[key][1]['Baseline']["Poses"][0]]),
+                                                                                           np.array([dict_objects[key][2]['Baseline']["Poses"][0]]),
+                                                                                           np.array([dict_objects[key][3]['Baseline']["Poses"][0]])), axis=0), 4, args.ycb_directory))
 
         dict_objects[key][4]['Sensor']["Mean"].append(calculate_auc(key, np.concatenate((np.array(dict_objects[key][0]['Sensor']["Poses"]),
                                                                                          np.array(dict_objects[key][1]['Sensor']["Poses"]),
                                                                                          np.array(dict_objects[key][2]['Sensor']["Poses"]),
-                                                                                         np.array(dict_objects[key][3]['Sensor']["Poses"])), axis=0), 20))
+                                                                                         np.array(dict_objects[key][3]['Sensor']["Poses"])), axis=0), 20, args.ycb_directory))
 
         dict_objects[key][4]['Baseline']["Mean"].append(calculate_auc(key, np.concatenate((np.array(dict_objects[key][0]['Baseline']["Poses"]),
-                                                                                         np.array(dict_objects[key][1]['Baseline']["Poses"]),
-                                                                                         np.array(dict_objects[key][2]['Baseline']["Poses"]),
-                                                                                         np.array(dict_objects[key][3]['Baseline']["Poses"])), axis=0), 20))
-        val_bool = False
+                                                                                           np.array(dict_objects[key][1]['Baseline']["Poses"]),
+                                                                                           np.array(dict_objects[key][2]['Baseline']["Poses"]),
+                                                                                           np.array(dict_objects[key][3]['Baseline']["Poses"])), axis=0), 20, args.ycb_directory))
 
-        if key == '011_banana':
-            val_bool = True
         dict_objects[key][4]['Sensor']["Mean"].append(calculate_auc_rot(key, np.concatenate((np.array([dict_objects[key][0]['Sensor']["Poses"][0]]),
-                                                                                         np.array([dict_objects[key][1]['Sensor']["Poses"][0]]),
-                                                                                         np.array([dict_objects[key][2]['Sensor']["Poses"][0]]),
-                                                                                         np.array([dict_objects[key][3]['Sensor']["Poses"][0]])), axis=0), 4))
+                                                                                             np.array([dict_objects[key][1]['Sensor']["Poses"][0]]),
+                                                                                             np.array([dict_objects[key][2]['Sensor']["Poses"][0]]),
+                                                                                             np.array([dict_objects[key][3]['Sensor']["Poses"][0]])), axis=0), 4, args.ycb_directory))
 
         dict_objects[key][4]['Baseline']["Mean"].append(calculate_auc_rot(key, np.concatenate((np.array([dict_objects[key][0]['Baseline']["Poses"][0]]),
-                                                                                         np.array([dict_objects[key][1]['Baseline']["Poses"][0]]),
-                                                                                         np.array([dict_objects[key][2]['Baseline']["Poses"][0]]),
-                                                                                               np.array([dict_objects[key][3]['Baseline']["Poses"][0]])), axis=0), 4))
+                                                                                               np.array([dict_objects[key][1]['Baseline']["Poses"][0]]),
+                                                                                               np.array([dict_objects[key][2]['Baseline']["Poses"][0]]),
+                                                                                               np.array([dict_objects[key][3]['Baseline']["Poses"][0]])), axis=0), 4, args.ycb_directory))
 
         dict_objects[key][4]['Sensor']["Mean"].append(calculate_auc_rot(key, np.concatenate((np.array(dict_objects[key][0]['Sensor']["Poses"]),
-                                                                                         np.array(dict_objects[key][1]['Sensor']["Poses"]),
-                                                                                         np.array(dict_objects[key][2]['Sensor']["Poses"]),
-                                                                                         np.array(dict_objects[key][3]['Sensor']["Poses"])), axis=0), 20))
+                                                                                             np.array(dict_objects[key][1]['Sensor']["Poses"]),
+                                                                                             np.array(dict_objects[key][2]['Sensor']["Poses"]),
+                                                                                             np.array(dict_objects[key][3]['Sensor']["Poses"])), axis=0), 20, args.ycb_directory))
 
         dict_objects[key][4]['Baseline']["Mean"].append(calculate_auc_rot(key, np.concatenate((np.array(dict_objects[key][0]['Baseline']["Poses"]),
-                                                                                         np.array(dict_objects[key][1]['Baseline']["Poses"]),
-                                                                                         np.array(dict_objects[key][2]['Baseline']["Poses"]),
-                                                                                         np.array(dict_objects[key][3]['Baseline']["Poses"])), axis=0), 20))
+                                                                                               np.array(dict_objects[key][1]['Baseline']["Poses"]),
+                                                                                               np.array(dict_objects[key][2]['Baseline']["Poses"]),
+                                                                                               np.array(dict_objects[key][3]['Baseline']["Poses"])), axis=0), 20, args.ycb_directory))
 
-
-
-        # Save table for all the triplets of the same object
-        numbers = {'Best pose sensor': [dict_objects[key][4]['Sensor']["Mean"][0], dict_objects[key][4]['Sensor']["Mean"][1], dict_objects[key][4]['Sensor']["Mean"][2], dict_objects[key][4]['Sensor']["Mean"][9]],
-                   'Best pose baseline': [dict_objects[key][4]['Baseline']["Mean"][0], dict_objects[key][4]['Baseline']["Mean"][1], dict_objects[key][4]['Baseline']["Mean"][2], dict_objects[key][4]['Baseline']["Mean"][9]],
-                   'Best 5 poses sensor': [dict_objects[key][4]['Sensor']["Mean"][3], dict_objects[key][4]['Sensor']["Mean"][4], dict_objects[key][4]['Sensor']["Mean"][5], dict_objects[key][4]['Sensor']["Mean"][10]],
-                   'Best 5 poses baseline': [dict_objects[key][4]['Baseline']["Mean"][3], dict_objects[key][4]['Baseline']["Mean"][4], dict_objects[key][4]['Baseline']["Mean"][5], dict_objects[key][4]['Baseline']["Mean"][10]],
-                   'Best 10 poses sensor': [dict_objects[key][4]['Sensor']["Mean"][6], dict_objects[key][4]['Sensor']["Mean"][7], dict_objects[key][4]['Sensor']["Mean"][8], dict_objects[key][4]['Sensor']["Mean"][11]],
-                   'Best 10 poses baseline': [dict_objects[key][4]['Baseline']["Mean"][6], dict_objects[key][4]['Baseline']["Mean"][7], dict_objects[key][4]['Baseline']["Mean"][8], dict_objects[key][4]['Baseline']["Mean"][11]]}
-
-        df = pd.DataFrame(numbers, index=['Metric Error', 'Position Error', 'Rotation Error', 'Contacts'])
-
-        with open(args.results_directory + "/" + key + "/table_all_triplets.tex", 'w') as tf:
-            tf.write(r'\documentclass{article}')
-            tf.write('\n')
-            tf.write(r'\usepackage{booktabs}')
-            tf.write('\n')
-            tf.write(r'\begin{document}')
-            tf.write('\n')
-            tf.write(df.style.to_latex())
-            tf.write('\n')
-            tf.write(r'\end{document}')
-    dict_loop = {}
-    counter = 0
-    for key, _ in dict_objects.items():
-        if key == 'total_objects':
-            break
-        counter +=1
-        dict_loop[counter] = [str('%.3f'%(dict_objects[key][4]['Baseline']["Mean"][0])) + ', ' + str('%.3f'%(dict_objects[key][4]['Baseline']["Mean"][3])) + ', ' + str('%.3f'%(dict_objects[key][4]['Baseline']["Mean"][6])),
-                              str('%.3f'%(dict_objects[key][4]['Sensor']["Mean"][0])) + ', ' + str('%.3f'%(dict_objects[key][4]['Sensor']["Mean"][3])) + ', ' + str('%.3f'%(dict_objects[key][4]['Sensor']["Mean"][6])),
-                              str('%.3f'%(dict_objects[key][4]['Baseline']["Mean"][1])) + ', ' + str('%.3f'%(dict_objects[key][4]['Baseline']["Mean"][4])) + ', ' + str('%.3f'%(dict_objects[key][4]['Baseline']["Mean"][7])),
-                              str('%.3f'%(dict_objects[key][4]['Sensor']["Mean"][1])) + ', ' + str('%.3f'%(dict_objects[key][4]['Sensor']["Mean"][4])) + ', ' + str('%.3f'%(dict_objects[key][4]['Sensor']["Mean"][7])),
-                              str('%.3f'%(dict_objects[key][4]['Baseline']["Mean"][2])) + ', ' + str('%.3f'%(dict_objects[key][4]['Baseline']["Mean"][5])) + ', ' + str('%.3f'%(dict_objects[key][4]['Baseline']["Mean"][8])),
-                              str('%.3f'%(dict_objects[key][4]['Sensor']["Mean"][2])) + ', ' + str('%.3f'%(dict_objects[key][4]['Sensor']["Mean"][5])) + ', ' + str('%.3f'%(dict_objects[key][4]['Sensor']["Mean"][8])),
-                              str('%.3f'%(dict_objects[key][4]['Baseline']["Mean"][9])) + ', ' + str('%.3f'%(dict_objects[key][4]['Baseline']["Mean"][10])) + ', ' + str('%.3f'%(dict_objects[key][4]['Baseline']["Mean"][11])),
-                              str('%.3f'%(dict_objects[key][4]['Sensor']["Mean"][9])) + ', ' + str('%.3f'%(dict_objects[key][4]['Sensor']["Mean"][10])) + ', ' + str('%.3f'%(dict_objects[key][4]['Sensor']["Mean"][11]))]
-
-    df = pd.DataFrame(dict_loop, index=['Metric Error Baseline', 'Metric Error Sensor', 'Position Error Baseline', 'Position Error Sensor', 'Rotation Error Baseline',  'Rotation Error Sensor', 'Contacts Baseline', 'Contacts Sensor'])
-
-
-    with open(args.results_directory + "/table_all_triplets_objects.tex", "w" ) as tf:
-            tf.write(r'\documentclass{article}')
-            tf.write('\n')
-            tf.write(r'\usepackage{booktabs}')
-            tf.write('\n')
-            tf.write(r'\begin{document}')
-            tf.write('\n')
-            tf.write(r'\resizebox{10cm}')
-            tf.write('\n')
-            tf.write(df.style.to_latex())
-            tf.write('\n')
-            tf.write(r'\end{document}')
 
     for k in range(16):
         dict_objects["total_objects"]["Sensor"]["Mean"].append(np.mean(np.array([dict_objects["002_master_chef_can"][4]['Sensor']["Mean"][k],
