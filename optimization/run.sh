@@ -9,7 +9,7 @@ for object in 002_master_chef_can 004_sugar_box 006_mustard_bottle 007_tuna_fish
     for triplet in triplet_1 triplet_2 triplet_3 triplet_4 ; do
 
         # Ours method
-        python optimization_git.py --config_file_path $1/results_directory_pose_estimation/${object}/${triplet}/config_directory/config_total_test.ini --enable_selection true
+        python optimization.py --config_file_path $1/results_directory_pose_estimation/${object}/${triplet}/config_directory/config_total_test.ini --enable_selection true
         rm $1/rotations/*
         mv rotations_best* $1/rotations/
 
@@ -26,7 +26,7 @@ for object in 002_master_chef_can 004_sugar_box 006_mustard_bottle 007_tuna_fish
         #cp -r remaining_poses $1/results_directory_pose_estimation/${object}/${triplet}/results_sensor/
 
         # Geometric baseline
-        python optimization_git.py --config_file_path $1/results_directory_pose_estimation/${object}/${triplet}/config_directory/config_total_test.ini
+        python optimization.py --config_file_path $1/results_directory_pose_estimation/${object}/${triplet}/config_directory/config_total_test.ini
         rm $1/rotations/*
         mv rotations_best* $1/rotations/
 
