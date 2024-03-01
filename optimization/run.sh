@@ -20,7 +20,7 @@ for object in 002_master_chef_can 004_sugar_box 006_mustard_bottle 007_tuna_fish
         python evaluate_poses.py --config_file_path $1/results_directory_pose_estimation/${object}/${triplet}/config_directory/config_total_test.ini
 
         cp landmarks.off final_results.npz $1/results_directory_pose_estimation/${object}/${triplet}/results_sensor/
-        
+
         # Uncomment if you want to save the point clouds related to the best poses
         #python save_poses.py --config_file_path $1/results_directory_pose_estimation/${object}/${triplet}/config_directory/config_total_test.ini
         #cp -r remaining_poses $1/results_directory_pose_estimation/${object}/${triplet}/results_sensor/
@@ -34,7 +34,7 @@ for object in 002_master_chef_can 004_sugar_box 006_mustard_bottle 007_tuna_fish
         OMP_NUM_THREADS=10 $1/physX/build/script $1//results_directory_pose_estimation/${object}/${triplet}/config_directory/config_physx.ini
 
         python evaluate_poses.py --config_file_path $1/results_directory_pose_estimation/${object}/${triplet}/config_directory/config_total_test.ini
-        
+
         cp landmarks.off final_results.npz $1/results_directory_pose_estimation/${object}/${triplet}/results_baseline/
 
         # Uncomment if you want to save the point clouds related to the best poses
@@ -43,4 +43,4 @@ for object in 002_master_chef_can 004_sugar_box 006_mustard_bottle 007_tuna_fish
     done
 done
 
-python final_results.py --results_directory $1/results_directory_pose_estimation --json_directory $1/json --ycb_directory $1/YCB_Video_Models
+python final_results.py --results_directory $1/results_directory_pose_estimation/ --json_directory $1/json/ --ycb_directory $1/YCB_Video_Models/ -l 0.1 -l 0.0 -l 0.2

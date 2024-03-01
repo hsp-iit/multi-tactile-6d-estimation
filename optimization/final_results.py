@@ -8,23 +8,10 @@ import json
 from bop_pose_error import adi as bop_adi
 from bop_pose_error import VOCap
 
+dir_name = os.path.dirname(__file__)
 class ADIEvaluator():
 
-    def __init__(self, ycbv_models_path):
-
-        object_names =\
-        [
-            '002_master_chef_can',
-            '004_sugar_box',
-            '006_mustard_bottle',
-            '007_tuna_fish_can',
-            '008_pudding_box',
-            '011_banana',
-            '019_pitcher_base',
-            '021_bleach_cleanser',
-            '036_wood_block',
-            '040_large_marker'
-        ]
+    def __init__(self, ycbv_models_path, object_names):
 
         self.clouds = { object_name : self.load_point_cloud(os.path.join(ycbv_models_path, 'models', object_name, 'points.xyz')) for object_name in object_names}
 
@@ -80,53 +67,37 @@ class ADIEvaluator():
 
 
 
-def calculate_auc(object_string, poses, num_poses, ycb_video_models_path):
-    evaluator = ADIEvaluator(ycb_video_models_path)
-    gt = np.array([0.1, 0.0, 0.2, 1.0, 0.0, 0.0, 0.0])
+def calculate_auc(object_string, poses, num_poses, ycb_video_models_path, ground_truth_position, object_names):
+    evaluator = ADIEvaluator(ycb_video_models_path, object_names)
+    gt = np.concatenate((ground_truth_position, np.array([1, 0, 0, 0])))
     gt = np.repeat(np.expand_dims(gt, 0), num_poses, axis=0)
 
     dists, auc = evaluator.adi_auc(object_string, gt, poses)
 
     return auc
 
-def calculate_auc_rot(object_string, poses, num_poses, ycb_video_models_path, bool_val = False):
-    evaluator = ADIEvaluator(ycb_video_models_path)
-    poses[:,:3] = np.array([0.1, 0.0, 0.2])
-    gt = np.array([0.1, 0.0, 0.2, 1.0, 0.0, 0.0, 0.0])
+def calculate_auc_rot(object_string, poses, num_poses, ycb_video_models_path, ground_truth_position, object_names, bool_val = False):
+    evaluator = ADIEvaluator(ycb_video_models_path, object_names)
+    poses[:,:3] = ground_truth_position
+    gt = np.concatenate((ground_truth_position, np.array([1, 0, 0, 0])))
     gt = np.repeat(np.expand_dims(gt, 0), num_poses, axis=0)
 
     dists, auc = evaluator.adi_auc(object_string, gt, poses)
 
-    if bool_val == True:
-        print(dists)
-
     return auc
 
-def save_points_as_off(points, name):
-    with open(name, 'w') as out:
-        out.write('OFF\r\n')
-        out.write(str(points.shape[1]) + ' 0 0\r\n')
-        for i in range(points.shape[1]):
-            out.write(str(points[0, i]) + ' ' + str(points[1, i]) + ' ' + str(points[2, i]) + ' \r\n')
 
 
-def save_pose(points, twist, name):
-    R = SO3.exp(twist[3:6]).as_matrix()
-    u, _, vh = np.linalg.svd(R, full_matrices = True)
-    R = u @ vh
-    points = R @ points + np.array([[twist[0]], [twist[1]], [twist[2]]])
-    with open(name, 'w') as out:
-        out.write('OFF\r\n')
-        out.write(str(points.shape[1]) + ' 0 0\r\n')
-        for i in range(points.shape[1]):
-            out.write(str(points[0, i]) + ' ' + str(points[1, i]) + ' ' + str(points[2, i]) + ' \r\n')
+def create_table_all_objects(dict_objects, results_directory, list_keys):
 
+    list_objects_tex = []
+    for obj in list_keys:
+        list_words = obj.rsplit('_')
+        create_string = [x + r'{\_}'for x in list_words[:-1]]
+        create_string.append(list_words[-1])
+        create_string.append(' & ')
+        list_objects_tex.append(''.join(create_string))
 
-
-
-def create_table_all_objects(dict_objects, results_directory):
-    list_objects_tex = [r'002{\_}master{\_}chef{\_}can & ', r'004{\_}sugar{\_}box & ', r'006{\_}mustard{\_}bottle & ', r'007{\_}tuna{\_}fish{\_}can & ', r'008{\_}pudding{\_}box & ', r'011{\_}banana & ', r'019{\_}pitcher{\_}base & ', r'021{\_}bleach{\_}cleanser & ', r'036{\_}wood{\_}block & ' , r'040{\_}large{\_}marker & ']
-    list_keys = ['002_master_chef_can',  '004_sugar_box', '006_mustard_bottle', '007_tuna_fish_can', '008_pudding_box', '011_banana','019_pitcher_base', '021_bleach_cleanser', '036_wood_block' ,'040_large_marker']
     with open(results_directory + "/table_all_objects.tex", 'w') as tf:
         tf.write(r'\begin{table*}')
         tf.write('\n')
@@ -196,19 +167,26 @@ def main():
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('--results_directory', dest='results_directory', help='path to the results directory',
                         type=str, required=True)
-    parser.add_argument('--json_directory', dest='json_directory', help='path to the json directory',
-                        type=str, required=True)
     parser.add_argument('--ycb_directory', dest='ycb_directory', help='path to the ycb directory',
                         type=str, required=True)
+    parser.add_argument('--json_directory', dest='json_directory', help='path to the json directory',
+                        type=str, required=True)
+    parser.add_argument('-l','--list', dest='gt',action='append')
 
     args = parser.parse_args()
 
     average_error = []
     average_rotation_error = []
     average_position_error = []
+    ground_truth_position = np.array([float(args.gt[0]),
+                                      float(args.gt[1]),
+                                      float(args.gt[2])])
 
-    with open(args.json_directory + '/contacts.json') as f:
+    with open(args.json_directory + 'contacts.json') as f:
         contacts_dict = json.load(f)
+
+    with open(args.json_directory + "objects.json") as fo:
+        list_objects = json.load(fo)
 
     average_error = np.array(average_error)
     average_rotation_error = np.array(average_rotation_error)
@@ -216,17 +194,12 @@ def main():
 
     error_dict = {"Best": [], "Best 5": [[], [], []], "Best 10": [[], [], []], "Mean": [], "Poses":[]}
     sensor_vs_baseline = {"Sensor": copy.deepcopy(error_dict), "Baseline": copy.deepcopy(error_dict)}
-    dict_objects = {"002_master_chef_can": [copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline)],
-                    "004_sugar_box":[copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline)],
-                    "006_mustard_bottle": [copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline)],
-                    "007_tuna_fish_can": [copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline)],
-                    "008_pudding_box": [copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline)],
-                    "011_banana": [copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline)],
-                    "019_pitcher_base": [copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline)],
-                    "021_bleach_cleanser": [copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline)],
-                    "036_wood_block": [copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline)],
-                    "040_large_marker": [copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline)],
-                    "total_objects": copy.deepcopy(sensor_vs_baseline)}
+
+    dict_objects = {}
+    for h in list_objects:
+        dict_objects[h] = [copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline), copy.deepcopy(sensor_vs_baseline)]
+
+    dict_objects["total_objects"] = copy.deepcopy(sensor_vs_baseline)
 
     method_list_path = ["results_sensor/", "results_baseline/"]
     method_list = ["Sensor", "Baseline"]
@@ -264,7 +237,7 @@ def main():
                     dict_objects[key][triplet][method_list[method]]["Best 10"][0].append(sum_errors[index_best])
                     dict_objects[key][triplet][method_list[method]]["Best 10"][1].append(position_errors[index_best] * 100)
                     dict_objects[key][triplet][method_list[method]]["Best 10"][2].append(rotation_errors[index_best])
-                    #contacts_dict[key][triplet][method_list[method]][j]= int(contacts_dict[key][triplet][method_list[method]][j]/3) * 100
+
                 # Average of the 5 and 10 poses for the same triplet and contacts
                 dict_objects[key][triplet][method_list[method]]["Mean"].append(dict_objects[key][triplet][method_list[method]]["Best"][0])
                 dict_objects[key][triplet][method_list[method]]["Mean"].append(dict_objects[key][triplet][method_list[method]]["Best"][1])
@@ -296,68 +269,54 @@ def main():
         dict_objects[key][4]['Sensor']["Mean"].append(calculate_auc(key, np.concatenate((np.array([dict_objects[key][0]['Sensor']["Poses"][0]]),
                                                                                          np.array([dict_objects[key][1]['Sensor']["Poses"][0]]),
                                                                                          np.array([dict_objects[key][2]['Sensor']["Poses"][0]]),
-                                                                                         np.array([dict_objects[key][3]['Sensor']["Poses"][0]])), axis=0), 4, args.ycb_directory))
+                                                                                         np.array([dict_objects[key][3]['Sensor']["Poses"][0]])), axis=0), 4, args.ycb_directory, ground_truth_position, list_objects))
 
         dict_objects[key][4]['Baseline']["Mean"].append(calculate_auc(key, np.concatenate((np.array([dict_objects[key][0]['Baseline']["Poses"][0]]),
                                                                                            np.array([dict_objects[key][1]['Baseline']["Poses"][0]]),
                                                                                            np.array([dict_objects[key][2]['Baseline']["Poses"][0]]),
-                                                                                           np.array([dict_objects[key][3]['Baseline']["Poses"][0]])), axis=0), 4, args.ycb_directory))
+                                                                                           np.array([dict_objects[key][3]['Baseline']["Poses"][0]])), axis=0), 4, args.ycb_directory, ground_truth_position, list_objects))
 
         dict_objects[key][4]['Sensor']["Mean"].append(calculate_auc(key, np.concatenate((np.array(dict_objects[key][0]['Sensor']["Poses"]),
                                                                                          np.array(dict_objects[key][1]['Sensor']["Poses"]),
                                                                                          np.array(dict_objects[key][2]['Sensor']["Poses"]),
-                                                                                         np.array(dict_objects[key][3]['Sensor']["Poses"])), axis=0), 20, args.ycb_directory))
+                                                                                         np.array(dict_objects[key][3]['Sensor']["Poses"])), axis=0), 20, args.ycb_directory, ground_truth_position, list_objects))
 
         dict_objects[key][4]['Baseline']["Mean"].append(calculate_auc(key, np.concatenate((np.array(dict_objects[key][0]['Baseline']["Poses"]),
                                                                                            np.array(dict_objects[key][1]['Baseline']["Poses"]),
                                                                                            np.array(dict_objects[key][2]['Baseline']["Poses"]),
-                                                                                           np.array(dict_objects[key][3]['Baseline']["Poses"])), axis=0), 20, args.ycb_directory))
+                                                                                           np.array(dict_objects[key][3]['Baseline']["Poses"])), axis=0), 20, args.ycb_directory, ground_truth_position, list_objects))
 
         dict_objects[key][4]['Sensor']["Mean"].append(calculate_auc_rot(key, np.concatenate((np.array([dict_objects[key][0]['Sensor']["Poses"][0]]),
                                                                                              np.array([dict_objects[key][1]['Sensor']["Poses"][0]]),
                                                                                              np.array([dict_objects[key][2]['Sensor']["Poses"][0]]),
-                                                                                             np.array([dict_objects[key][3]['Sensor']["Poses"][0]])), axis=0), 4, args.ycb_directory))
+                                                                                             np.array([dict_objects[key][3]['Sensor']["Poses"][0]])), axis=0), 4, args.ycb_directory, ground_truth_position, list_objects))
 
         dict_objects[key][4]['Baseline']["Mean"].append(calculate_auc_rot(key, np.concatenate((np.array([dict_objects[key][0]['Baseline']["Poses"][0]]),
                                                                                                np.array([dict_objects[key][1]['Baseline']["Poses"][0]]),
                                                                                                np.array([dict_objects[key][2]['Baseline']["Poses"][0]]),
-                                                                                               np.array([dict_objects[key][3]['Baseline']["Poses"][0]])), axis=0), 4, args.ycb_directory))
+                                                                                               np.array([dict_objects[key][3]['Baseline']["Poses"][0]])), axis=0), 4, args.ycb_directory, ground_truth_position, list_objects))
 
         dict_objects[key][4]['Sensor']["Mean"].append(calculate_auc_rot(key, np.concatenate((np.array(dict_objects[key][0]['Sensor']["Poses"]),
                                                                                              np.array(dict_objects[key][1]['Sensor']["Poses"]),
                                                                                              np.array(dict_objects[key][2]['Sensor']["Poses"]),
-                                                                                             np.array(dict_objects[key][3]['Sensor']["Poses"])), axis=0), 20, args.ycb_directory))
+                                                                                             np.array(dict_objects[key][3]['Sensor']["Poses"])), axis=0), 20, args.ycb_directory, ground_truth_position, list_objects))
 
         dict_objects[key][4]['Baseline']["Mean"].append(calculate_auc_rot(key, np.concatenate((np.array(dict_objects[key][0]['Baseline']["Poses"]),
                                                                                                np.array(dict_objects[key][1]['Baseline']["Poses"]),
                                                                                                np.array(dict_objects[key][2]['Baseline']["Poses"]),
-                                                                                               np.array(dict_objects[key][3]['Baseline']["Poses"])), axis=0), 20, args.ycb_directory))
+                                                                                               np.array(dict_objects[key][3]['Baseline']["Poses"])), axis=0), 20, args.ycb_directory, ground_truth_position, list_objects))
 
 
     for k in range(16):
-        dict_objects["total_objects"]["Sensor"]["Mean"].append(np.mean(np.array([dict_objects["002_master_chef_can"][4]['Sensor']["Mean"][k],
-                                                                                 dict_objects["004_sugar_box"][4]['Sensor']["Mean"][k],
-                                                                                 dict_objects["006_mustard_bottle"][4]['Sensor']["Mean"][k],
-                                                                                 dict_objects["007_tuna_fish_can"][4]['Sensor']["Mean"][k],
-                                                                                 dict_objects["008_pudding_box"][4]['Sensor']["Mean"][k],
-                                                                                 dict_objects["011_banana"][4]['Sensor']["Mean"][k],
-                                                                                 dict_objects["019_pitcher_base"][4]['Sensor']["Mean"][k],
-                                                                                 dict_objects["021_bleach_cleanser"][4]['Sensor']["Mean"][k],
-                                                                                 dict_objects["036_wood_block"][4]['Sensor']["Mean"][k],
-                                                                                 dict_objects["040_large_marker"][4]['Sensor']["Mean"][k]])))
-        dict_objects["total_objects"]["Baseline"]["Mean"].append(np.mean(np.array([dict_objects["002_master_chef_can"][4]['Baseline']["Mean"][k],
-                                                                                   dict_objects["004_sugar_box"][4]['Baseline']["Mean"][k],
-                                                                                   dict_objects["006_mustard_bottle"][4]['Baseline']["Mean"][k],
-                                                                                   dict_objects["007_tuna_fish_can"][4]['Baseline']["Mean"][k],
-                                                                                   dict_objects["008_pudding_box"][4]['Baseline']["Mean"][k],
-                                                                                   dict_objects["011_banana"][4]['Baseline']["Mean"][k],
-                                                                                   dict_objects["019_pitcher_base"][4]['Baseline']["Mean"][k],
-                                                                                   dict_objects["021_bleach_cleanser"][4]['Baseline']["Mean"][k],
-                                                                                   dict_objects["036_wood_block"][4]['Baseline']["Mean"][k],
-                                                                                   dict_objects["040_large_marker"][4]['Baseline']["Mean"][k]])))
+        arr_sensor = np.empty((0,1))
+        arr_baseline = np.empty((0,1))
+        for h in list_objects:
+            arr_sensor = np.append(arr_sensor, np.array([[dict_objects[h][4]['Sensor']["Mean"][k]]]), 0)
+            arr_baseline = np.append(arr_baseline, np.array([[dict_objects[h][4]['Baseline']["Mean"][k]]]), 0)
 
-
-    create_table_all_objects(dict_objects, args.results_directory)
+        dict_objects["total_objects"]["Sensor"]["Mean"].append(np.mean(arr_sensor))
+        dict_objects["total_objects"]["Baseline"]["Mean"].append(np.mean(arr_baseline))
+    create_table_all_objects(dict_objects, args.results_directory, list_objects)
 
 
 if __name__ == '__main__':
