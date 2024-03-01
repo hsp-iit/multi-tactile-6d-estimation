@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<sdf version="1.7">
+    <model name='004_sugar_box'>
+        <link name='004_sugar_box_link'>
+            <inertial>
+                <!-- Obtained by Meshlab -->
+                <pose>-0.002482 -0.004585 0.000009 0 0 0</pose>
+            </inertial>
+            <collision name='004_sugar_box_collision'>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>1</mu>
+                            <mu2>1</mu2>
+                        </ode>
+                    </friction>
+                </surface>
+                <max_contacts>1</max_contacts>
+                <geometry>
+                    <mesh>
+                        <uri>model://004_sugar_box/textured.obj</uri>
+                    </mesh>
+                </geometry>
+            </collision>
+            <visual name='004_sugar_box_visual'>
+                <geometry>
+                    <mesh>
+                        <uri>model://004_sugar_box/textured.obj</uri>
+                    </mesh>
+                </geometry>
+            </visual>
+        </link>
+
+        <joint name="world_to_base_link" type="fixed">
+            <parent>world</parent>
+            <child>004_sugar_box_link</child>
+        </joint>
+    </model>
+</sdf>

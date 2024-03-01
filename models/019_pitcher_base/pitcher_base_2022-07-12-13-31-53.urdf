@@ -1,0 +1,20 @@
+<?xml version="1.0" ?>
+<robot name="pitcher_base">
+    <link name="canonical_link">
+        <inertial>
+            <origin xyz="-0.012957430251734316 -0.012823613899142834 -0.021383718371490786" rpy="0.0 0.0 0.0"/>
+            <mass value="1.0"/>
+            <inertia ixx="0.005233283159140208" ixy="-3.134934038539532e-05" ixz="-2.386764927407519e-05" iyy="0.005238926788690583" iyz="-4.256488250108098e-05" izz="0.0018455902403712273"/>
+        </inertial>
+        <visual>
+            <geometry>
+                <mesh filename="./textured.obj" scale="1.0 1.0 1.0"/>
+            </geometry>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="./textured_vhacd2.obj" scale="1.0 1.0 1.0"/>
+            </geometry>
+        </collision>
+    </link>
+</robot>

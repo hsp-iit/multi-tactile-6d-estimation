@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<sdf version="1.7">
+    <model name='011_banana'>
+        <link name='011_banana_link'>
+            <inertial>
+                <!-- Obtained by Meshlab -->
+                <pose>-0.002482 -0.004585 0.000009 0 0 0</pose>
+            </inertial>
+            <collision name='011_banana_collision'>
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>1</mu>
+                            <mu2>1</mu2>
+                        </ode>
+                    </friction>
+                </surface>
+                <max_contacts>1</max_contacts>
+                <geometry>
+                    <mesh>
+                        <uri>model://011_banana/textured.obj</uri>
+                    </mesh>
+                </geometry>
+            </collision>
+            <visual name='011_banana_visual'>
+                <geometry>
+                    <mesh>
+                        <uri>model://011_banana/textured.obj</uri>
+                    </mesh>
+                </geometry>
+            </visual>
+        </link>
+
+        <joint name="world_to_base_link" type="fixed">
+            <parent>world</parent>
+            <child>011_banana_link</child>
+        </joint>
+    </model>
+</sdf>

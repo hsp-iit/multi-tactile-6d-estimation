@@ -1,0 +1,40 @@
+<?xml version="1.0" ?>
+<sdf version="1.7">
+    <model name="040_large_marker">
+        <link name="040_large_marker_link">
+            <inertial>
+                <pose>-0.00008 -0.000655 -0.000489 0.0 0.0 0.0</pose>
+                <mass>1.0</mass>
+                <inertia>0.0 0.0 0.0 0.0 0.0 0.0</inertia>
+            </inertial>
+            <collision name="040_large_marker_collision">
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>1</mu>
+                            <mu2>1</mu2>
+                        </ode>
+                    </friction>
+                </surface>
+                <max_contact>1</max_contact>
+                <geometry>
+                    <mesh>
+                        <uri>model://040_large_marker/textured.obj</uri>
+                    </mesh>
+                </geometry>
+            </collision>
+            <visual name="040_large_marker_visual">
+                <geometry>
+                    <mesh>
+                        <uri>model://040_large_marker/textured.obj</uri>
+                    </mesh>
+                </geometry>
+            </visual>
+        </link>
+
+        <joint name="world_to_base_link" type="fixed">
+            <parent>world</parent>
+            <child>040_large_marker_link</child>
+        </joint>
+    </model>
+</sdf>

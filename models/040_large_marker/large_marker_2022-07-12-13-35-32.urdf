@@ -1,0 +1,20 @@
+<?xml version="1.0" ?>
+<robot name="large_marker">
+    <link name="canonical_link">
+        <inertial>
+            <origin xyz="-8.811877975121154e-05 -0.000654769331141626 -0.0004887140236617075" rpy="0.0 0.0 0.0"/>
+            <mass value="1.0"/>
+            <inertia ixx="0.00113028922757571" ixy="2.2711868781869857e-05" ixz="-6.227304989030943e-08" iyy="3.9274301937994664e-05" iyz="-5.841712581613933e-07" izz="0.0011308049352245979"/>
+        </inertial>
+        <visual>
+            <geometry>
+                <mesh filename="./textured.obj" scale="1.0 1.0 1.0"/>
+            </geometry>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="./textured_vhacd2.obj" scale="1.0 1.0 1.0"/>
+            </geometry>
+        </collision>
+    </link>
+</robot>

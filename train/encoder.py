@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchsummary import summary
+
 
 
 class Encoder(nn.Module):
@@ -67,7 +67,7 @@ class Encoder(nn.Module):
 
         # Initialize the batch normalization layers
         self.bns = nn.ModuleList([nn.BatchNorm2d(oc) for oc in out_channels[:-1]])
-        
+
         # Initialize the flatten layer
         self.flatten = nn.Flatten()
 
@@ -86,18 +86,18 @@ class Encoder(nn.Module):
     def forward(self, x):
         """
         Forward pass of the network. It provides a latent representation of the input image x.
-        
+
         Parameters
         ----------
         x : torch.tensor
             tensor of the images
-        
+
         Returns
         -------
         torch.tensor
 
         """
-        
+
         # Forward the image through the network
         for conv in self.convs[:-1]:
             x = conv(x)
@@ -106,6 +106,5 @@ class Encoder(nn.Module):
         x = self.convs[-1](x)
         x = F.relu(x)
         x = self.flatten(x)
-        
+
         return self.fc(x)
-    

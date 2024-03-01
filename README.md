@@ -24,22 +24,91 @@
 - [Installation](#gear-installation)
 - [Citing this paper](#-citing-this-paper)
 
-## :new: Updates
-
-2023-10-02 - Add the training code in the [train](train) folder
-
-2023-10-04 - Update the `README.md`
-
-2023-11-07 - Add the optimization code in the [optimization](optimization) folder
 
 ## :gear: Installation
 
-### Requirements
-To be added.
+### Strict Requirements
+- [pytorch](https://pytorch.org/)
+```
+pip install torch==1.10.1+cu111 torchvision==0.11.2+cu111 torchaudio==0.10.1 -f https://download.pytorch.org/whl/cu111/torch_stable.html
+```
+- [jax](https://jax.readthedocs.io/en/latest/installation.html#nvidia-gpu)
+```
+pip install jaxlie jax==0.3.4
+```
+- jaxlib
+```
+pip install https://storage.googleapis.com/jax-releases/cuda11/jaxlib-0.3.2+cuda11.cudnn82-cp38-none-manylinux2010_x86_64.whl
+```
+- [NVIDIA PhysX SDK 4.1](https://github.com/NVIDIAGameWorks/PhysX)
+### Dependencies
+- numpy==1.22.3
+- scipy==1.8.0
+- pyquaternion
+- tqdm
 
-### How to install
-To be added.
+## How to install
+### No docker
+#### 1. Install NVIDIA PhysX SDK 4.1
+Clone the [repo](https://github.com/NVIDIAGameWorks/PhysX.git) and follow the [instructions](https://github.com/NVIDIAGameWorks/PhysX?tab=readme-ov-file#quick-start-instructions). For linux installation, you need to install clang:
 
+```
+sudo apt-get install clang
+```
+
+In order to let CMAKE use it as compiler, you should export the CMAKE_CXX_COMPILER environment variable in this way:
+
+```
+export CMAKE_CXX_COMPILER=/usr/bin/clang
+```
+
+```
+sudo apt-get install libxxf86vm-dev
+```
+
+#### 2. Clone repository
+```
+git clone https://github.com/hsp-iit/multi-tactile-6d-estimation.git 
+cd multi-tactile-6d-estimation
+```
+
+Then, you need to compile the collision detection code.
+
+``` 
+cd physX 
+mkdir build
+```
+
+To compile the code, you need to set in the [CMakeLists.txt](physX/CMakeLists.txt) file the absolute path to PhysX/physx you compiled in the first step.
+
+```
+cd build
+cmake .. -DCMAKE_BUILD_TYPE=Debug "-GUnix Makefiles" -DCMAKE_CXX_FLAGS=-Wno-restrict -Wno-class-memaccess 
+sed -e s/-Werror//g -i /home/user/multi-tactile-6d-estimation/physX/build/externals/physx/sdk_source_bin/CMakeFiles/PhysXExtensions.dir/flags.make
+make
+```
+
+#### 3. Get the model
+```
+cd multi-tactile-6d-estimation && apt install git-lfs & git lfs install && git clone https://huggingface.co/gabrielecaddeo/tactile-autoencoder
+```
+
+### Docker
+You need to build the image provided in [docker](docker) folder by running
+```
+cd docker
+bash run.sh
+```
+
+## How to run
+To reproduce the experiments, you need to run
+```
+cd multi-tactile-6d-estimation/optimization
+bash run.sh /path/to/multi-tactile-6d-estimation /path/to/multi-tactile-6d-estimation/tactile-autoencoder/weights/model_real_back_norm.pth
+```
+You will find the table_all_objects.tex in results_directory_pose_estimation directory
+## Fix
+The rotation metrics' results are expected to be slightly better than those presented in the paper, attributed to a minor error in the [final_results.py](optimization/final_results.py) file
 
 ## 📰 Citing this paper
 

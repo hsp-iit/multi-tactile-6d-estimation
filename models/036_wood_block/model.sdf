@@ -1,0 +1,40 @@
+<?xml version="1.0" ?>
+<sdf version="1.7">
+    <model name="036_wood_block">
+        <link name="036_wood_block_link">
+            <inertial>
+                <pose>-0.001813 0.002142 -0.017328 0.0 0.0 0.0</pose>
+                <mass>1.0</mass>
+                <inertia>0.0 0.0 0.0 0.0 0.0 0.0</inertia>
+            </inertial>
+            <collision name="036_wood_block_collision">
+                <surface>
+                    <friction>
+                        <ode>
+                            <mu>1</mu>
+                            <mu2>1</mu2>
+                        </ode>
+                    </friction>
+                </surface>
+                <max_contact>1</max_contact>
+                <geometry>
+                    <mesh>
+                        <uri>model://036_wood_block/textured.obj</uri>
+                    </mesh>
+                </geometry>
+            </collision>
+            <visual name="036_wood_block_visual">
+                <geometry>
+                    <mesh>
+                        <uri>model://036_wood_block/textured.obj</uri>
+                    </mesh>
+                </geometry>
+            </visual>
+        </link>
+
+        <joint name="world_to_base_link" type="fixed">
+            <parent>world</parent>
+            <child>036_wood_block_link</child>
+        </joint>
+    </model>
+</sdf>

@@ -1,0 +1,20 @@
+<?xml version="1.0" ?>
+<robot name="bleach_cleanser">
+    <link name="canonical_link">
+        <inertial>
+            <origin xyz="-0.0004759422304955938 0.0023073735367375916 -0.011854045698687516" rpy="0.0 0.0 0.0"/>
+            <mass value="1.0"/>
+            <inertia ixx="0.004354650558846576" ixy="3.531169148130211e-06" ixz="-0.00025203048571672567" iyy="0.004695976633581973" iyz="2.1901367387165463e-06" izz="0.0008048698645282804"/>
+        </inertial>
+        <visual>
+            <geometry>
+                <mesh filename="./textured.obj" scale="1.0 1.0 1.0"/>
+            </geometry>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="./textured_vhacd2.obj" scale="1.0 1.0 1.0"/>
+            </geometry>
+        </collision>
+    </link>
+</robot>
