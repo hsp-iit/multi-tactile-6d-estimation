@@ -90,7 +90,10 @@ make
 
 #### 3. Get the model
 ```
-cd multi-tactile-6d-estimation && apt install git-lfs & git lfs install && git clone https://huggingface.co/gabrielecaddeo/tactile-autoencoder
+cd multi-tactile-6d-estimation
+apt install git-lfs
+git lfs install
+git clone https://huggingface.co/gabrielecaddeo/tactile-autoencoder
 ```
 
 ### Docker
