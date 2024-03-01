@@ -67,7 +67,6 @@ RUN source env/bin/activate && \
 WORKDIR /home/user
 RUN source env/bin/activate && \
     cd multi-tactile-6d-estimation && \
-    git checkout physx_branch && \
     cd physX && \
     mkdir build && \
     cd build && \
